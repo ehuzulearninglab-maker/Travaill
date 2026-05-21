@@ -52,7 +52,6 @@ Exemple :
 
 ```json
 {
-  "secret_key": "CLE_SECURISÉE",
   "utilisateur_email": "enseignant@ehuzu.test",
   "fiche": {
     "fiche_de": "Mathématiques",
@@ -67,6 +66,8 @@ Exemple :
 ```
 
 Le champ `utilisateur_email` est facultatif. S’il est absent, la fiche est rattachée au compte de démonstration.
+
+Pour une action GPT, configurer l’authentification en clé API avec l’en-tête `x-import-secret`. Le corps JSON ne doit contenir que la fiche et, si utile, `utilisateur_email`.
 
 ## Base de données
 

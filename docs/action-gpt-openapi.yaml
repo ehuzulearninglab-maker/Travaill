@@ -9,6 +9,8 @@ paths:
     post:
       operationId: importerFichePedagogique
       summary: Envoyer une fiche pédagogique validée vers la plateforme.
+      security:
+        - ImportSecret: []
       requestBody:
         required: true
         content:
@@ -16,11 +18,8 @@ paths:
             schema:
               type: object
               required:
-                - secret_key
                 - fiche
               properties:
-                secret_key:
-                  type: string
                 utilisateur_email:
                   type: string
                   description: Adresse de l’enseignant destinataire, si disponible.
@@ -41,3 +40,9 @@ paths:
                     type: string
                   fiche_id:
                     type: string
+components:
+  securitySchemes:
+    ImportSecret:
+      type: apiKey
+      in: header
+      name: x-import-secret

@@ -10,6 +10,20 @@ type ImportBody = {
   fiche?: FicheContenu;
 };
 
+function readSecret(request: Request, body: ImportBody): string | undefined {
+  const authHeader = request.headers.get("authorization");
+  const bearer = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice("bearer ".length).trim()
+    : undefined;
+
+  return (
+    request.headers.get("x-import-secret") ||
+    request.headers.get("x-api-key") ||
+    bearer ||
+    body.secret_key
+  );
+}
+
 export async function POST(request: Request) {
   let body: ImportBody;
 
@@ -20,7 +34,8 @@ export async function POST(request: Request) {
   }
 
   const expectedSecret = process.env.IMPORT_SECRET_KEY || "CLE_SECURISÉE";
-  if (!body.secret_key || body.secret_key !== expectedSecret) {
+  const providedSecret = readSecret(request, body);
+  if (!providedSecret || providedSecret !== expectedSecret) {
     return NextResponse.json({ succes: false, message: "Clé secrète invalide." }, { status: 401 });
   }
 
