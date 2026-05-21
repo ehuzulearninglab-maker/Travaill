@@ -25,6 +25,26 @@ paths:
                   description: Adresse de l’enseignant destinataire, si disponible.
                 fiche:
                   type: object
+                  required:
+                    - fiche_de
+                  properties:
+                    fiche_de:
+                      type: string
+                    classe:
+                      type: string
+                    date:
+                      type: string
+                    duree:
+                      type: string
+                    cours:
+                      type: string
+                    deroulement:
+                      type: array
+                      items:
+                        type: object
+                        additionalProperties: true
+                    resultats_attendus:
+                      type: string
                   additionalProperties: true
       responses:
         "200":

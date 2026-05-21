@@ -8,7 +8,11 @@ type ImportBody = {
   secret_key?: string;
   utilisateur_email?: string;
   fiche?: FicheContenu;
-};
+} & Record<string, unknown>;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
 
 function readSecret(request: Request, body: ImportBody): string | undefined {
   const authHeader = request.headers.get("authorization");
@@ -40,12 +44,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ succes: false, message: "Clé secrète invalide." }, { status: 401 });
   }
 
-  if (!body.fiche || typeof body.fiche !== "object" || Array.isArray(body.fiche)) {
-    return NextResponse.json({ succes: false, message: "Fiche absente ou invalide." }, { status: 400 });
+  let fichePayload: FicheContenu | undefined;
+  if (isPlainObject(body.fiche)) {
+    fichePayload = body.fiche as FicheContenu;
+  } else {
+    const { secret_key: _secretKey, utilisateur_email: _email, fiche: _fiche, ...topLevelFiche } = body;
+    if (Object.keys(topLevelFiche).length > 0) {
+      fichePayload = topLevelFiche as FicheContenu;
+    }
+  }
+
+  if (!fichePayload) {
+    return NextResponse.json(
+      {
+        succes: false,
+        message:
+          "Fiche absente ou invalide. Envoyez un objet JSON contenant une propriété fiche ou les champs de la fiche."
+      },
+      { status: 400 }
+    );
   }
 
   const targetUser = body.utilisateur_email ? await getUserByEmail(body.utilisateur_email) : undefined;
-  const fiche = await importFiche(body.fiche, targetUser?.id);
+  const fiche = await importFiche(fichePayload, targetUser?.id);
 
   return NextResponse.json({
     succes: true,
