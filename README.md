@@ -2,6 +2,8 @@
 
 Application web Next.js destinée à recevoir des fiches validées depuis un GPT personnalisé, les afficher dans un canevas pédagogique, les modifier, les sauvegarder et les exporter.
 
+Application publiée : https://travaill.vercel.app
+
 ## Points clés
 
 - Interface entièrement orientée enseignants, en français.
