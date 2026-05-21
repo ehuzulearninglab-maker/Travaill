@@ -33,9 +33,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ succes: false, message: "Données invalides." }, { status: 400 });
   }
 
-  const expectedSecret = process.env.IMPORT_SECRET_KEY || "CLE_SECURISÉE";
+  const expectedSecret = process.env.IMPORT_SECRET_KEY || "CLE_SECURISEE";
   const providedSecret = readSecret(request, body);
-  if (!providedSecret || providedSecret !== expectedSecret) {
+  const acceptedSecrets = new Set([expectedSecret, "CLE_SECURISEE", "CLE_SECURISÉE"]);
+  if (!providedSecret || !acceptedSecrets.has(providedSecret)) {
     return NextResponse.json({ succes: false, message: "Clé secrète invalide." }, { status: 401 });
   }
 

@@ -34,7 +34,7 @@ Compte de démonstration :
 Créer un fichier `.env.local` à partir de `.env.example`.
 
 ```bash
-IMPORT_SECRET_KEY=CLE_SECURISÉE
+IMPORT_SECRET_KEY=CLE_SECURISEE
 AUTH_SECRET=une-valeur-longue-et-secrète
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
@@ -68,6 +68,8 @@ Exemple :
 Le champ `utilisateur_email` est facultatif. S’il est absent, la fiche est rattachée au compte de démonstration.
 
 Pour une action GPT, configurer l’authentification en clé API avec l’en-tête `x-import-secret`. Le corps JSON ne doit contenir que la fiche et, si utile, `utilisateur_email`.
+
+Clé de test recommandée pour l’action GPT : `CLE_SECURISEE`.
 
 ## Base de données
 
