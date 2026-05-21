@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Download, FileText, Filter, PencilLine, Plus, Search } from "lucide-react";
+import { cacheFiches } from "@/lib/client-fiche-cache";
+import { telechargerFiche } from "@/lib/client-download";
 import type { FicheRecord } from "@/lib/types";
 
 export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[] }) {
@@ -35,6 +37,10 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
     const timer = window.setInterval(refresh, 7000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    cacheFiches(fiches);
+  }, [fiches]);
 
   async function createFiche() {
     setCreating(true);
@@ -115,10 +121,18 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
                 <PencilLine size={16} aria-hidden="true" />
                 Ouvrir
               </Link>
-              <a href={`/api/fiches/${fiche.id}/export/pdf`} className="bouton-secondaire">
+              <button
+                type="button"
+                onClick={() => {
+                  telechargerFiche(fiche, "pdf").catch(() => {
+                    window.alert("Le PDF n'a pas pu être généré. Veuillez réessayer.");
+                  });
+                }}
+                className="bouton-secondaire"
+              >
                 <Download size={16} aria-hidden="true" />
                 PDF
-              </a>
+              </button>
             </div>
           </article>
         ))}

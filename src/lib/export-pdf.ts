@@ -11,6 +11,20 @@ import type { FicheRecord } from "@/lib/types";
 
 type PdfKitDoc = InstanceType<typeof PDFDocument>;
 
+function safePdfText(value: string): string {
+  return (value || " ")
+    .replace(/\u00a0/g, " ")
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+    .replace(/[‐‑‒–—―]/g, "-")
+    .replace(/\u2026/g, "...")
+    .replace(/[•◦▪]/g, "-")
+    .replace(/œ/g, "oe")
+    .replace(/Œ/g, "OE")
+    .replace(/€/g, "EUR")
+    .replace(/[^\x09\x0a\x0d\x20-\x7e\xa0-\xff]/g, "");
+}
+
 function addWrappedCell(
   doc: PdfKitDoc,
   text: string,
@@ -22,7 +36,7 @@ function addWrappedCell(
 ) {
   doc.rect(x, y, width, height).fillAndStroke(options.fill ?? "#ffffff", "#3c3126");
   doc.fillColor("#181713").font(options.bold ? "Helvetica-Bold" : "Helvetica").fontSize(8);
-  doc.text(text || " ", x + 4, y + 5, {
+  doc.text(safePdfText(text), x + 4, y + 5, {
     width: width - 8,
     height: height - 8,
     ellipsis: true
@@ -50,7 +64,7 @@ export async function buildFichePdf(fiche: FicheRecord): Promise<Buffer> {
       align: "center"
     });
     doc.moveDown(0.4);
-    doc.font("Helvetica").fontSize(10).text(fiche.titre, { align: "center" });
+    doc.font("Helvetica").fontSize(10).text(safePdfText(fiche.titre), { align: "center" });
     doc.moveDown(1);
 
     const pageWidth = doc.page.width - 72;
@@ -80,7 +94,7 @@ export async function buildFichePdf(fiche: FicheRecord): Promise<Buffer> {
       const value = valueToText(readField(fiche.contenu_json, field.key));
       const valueHeight = Math.max(
         30,
-        doc.heightOfString(value || " ", { width: pageWidth * 0.66 - 10 }) + 14
+        doc.heightOfString(safePdfText(value), { width: pageWidth * 0.66 - 10 }) + 14
       );
       y = ensureSpace(doc, y, valueHeight);
       addWrappedCell(doc, field.label, 36, y, pageWidth * 0.34, valueHeight, {
@@ -107,7 +121,7 @@ export async function buildFichePdf(fiche: FicheRecord): Promise<Buffer> {
       const values = DEROULEMENT_COLUMNS.map((column) => row[column.key]);
       const height = Math.max(
         46,
-        ...values.map((value, index) => doc.heightOfString(value || " ", { width: widths[index] - 8 }) + 14)
+        ...values.map((value, index) => doc.heightOfString(safePdfText(value), { width: widths[index] - 8 }) + 14)
       );
       y = ensureSpace(doc, y, height);
       values.forEach((value, index) => {

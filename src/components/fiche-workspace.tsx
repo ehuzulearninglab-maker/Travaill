@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Clock3, Download, FileDown, PencilLine, Printer, Save, TableProperties } from "lucide-react";
 import { FicheCanevas } from "@/components/fiche-canevas";
 import { FicheEditor } from "@/components/fiche-editor";
+import { cacheFiche } from "@/lib/client-fiche-cache";
+import { telechargerFiche } from "@/lib/client-download";
 import type { FicheContenu, FicheRecord, HistoriqueRecord } from "@/lib/types";
 
 type Onglet = "apercu" | "edition" | "historique";
@@ -22,6 +24,11 @@ export function FicheWorkspace({
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const firstRun = useRef(true);
+  const currentFiche: FicheRecord = { ...fiche, contenu_json: contenu };
+
+  useEffect(() => {
+    cacheFiche({ ...fiche, contenu_json: contenu });
+  }, [contenu, fiche]);
 
   useEffect(() => {
     if (firstRun.current) {
@@ -72,14 +79,30 @@ export function FicheWorkspace({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <a href={`/api/fiches/${fiche.id}/export/pdf`} className="bouton-secondaire">
+            <button
+              type="button"
+              onClick={() => {
+                telechargerFiche(currentFiche, "pdf").catch(() => {
+                  window.alert("Le PDF n'a pas pu être généré. Veuillez réessayer.");
+                });
+              }}
+              className="bouton-secondaire"
+            >
               <FileDown size={16} aria-hidden="true" />
               PDF
-            </a>
-            <a href={`/api/fiches/${fiche.id}/export/word`} className="bouton-secondaire">
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                telechargerFiche(currentFiche, "word").catch(() => {
+                  window.alert("Le document Word n'a pas pu être généré. Veuillez réessayer.");
+                });
+              }}
+              className="bouton-secondaire"
+            >
               <Download size={16} aria-hidden="true" />
               Word
-            </a>
+            </button>
             <button type="button" onClick={() => window.print()} className="bouton-primaire">
               <Printer size={16} aria-hidden="true" />
               Imprimer
