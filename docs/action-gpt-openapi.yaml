@@ -18,34 +18,68 @@ paths:
             schema:
               type: object
               required:
-                - fiche
+                - fiche_de
               properties:
                 utilisateur_email:
                   type: string
                   description: Adresse de l’enseignant destinataire, si disponible.
-                fiche:
-                  type: object
-                  required:
-                    - fiche_de
-                  properties:
-                    fiche_de:
-                      type: string
-                    classe:
-                      type: string
-                    date:
-                      type: string
-                    duree:
-                      type: string
-                    cours:
-                      type: string
-                    deroulement:
-                      type: array
-                      items:
-                        type: object
-                        additionalProperties: true
-                    resultats_attendus:
-                      type: string
-                  additionalProperties: true
+                fiche_de:
+                  type: string
+                dossier_ou_unite:
+                  type: string
+                san:
+                  type: string
+                sequence:
+                  type: string
+                date:
+                  type: string
+                cours:
+                  type: string
+                classe:
+                  type: string
+                fiche_no:
+                  type: string
+                duree:
+                  type: string
+                contenu_de_formation:
+                  type: string
+                competences_disciplinaires:
+                  type: string
+                competences_transversales:
+                  type: string
+                connaissances_et_techniques:
+                  type: string
+                strategie_objet_apprentissage:
+                  type: string
+                strategies_enseignement_apprentissage_evaluation:
+                  type: string
+                materiel:
+                  type: string
+                deroulement:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      etape:
+                        type: string
+                      duree:
+                        type: string
+                      activites_enseignant:
+                        type: string
+                      activites_apprenants:
+                        type: string
+                      consignes:
+                        type: string
+                      resultats_attendus:
+                        type: string
+                      evaluation:
+                        type: string
+                    additionalProperties: true
+                consignes:
+                  type: string
+                resultats_attendus:
+                  type: string
+              additionalProperties: true
       responses:
         "200":
           description: Fiche reçue et enregistrée.
@@ -61,6 +95,7 @@ paths:
                   fiche_id:
                     type: string
 components:
+  schemas: {}
   securitySchemes:
     ImportSecret:
       type: apiKey

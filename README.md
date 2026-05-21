@@ -53,21 +53,18 @@ Exemple :
 ```json
 {
   "utilisateur_email": "enseignant@ehuzu.test",
-  "fiche": {
-    "fiche_de": "Mathématiques",
-    "classe": "CM1",
-    "date": "2026-05-21",
-    "duree": "45 min",
-    "competences": [],
-    "deroulement": [],
-    "resultats_attendus": ""
-  }
+  "fiche_de": "Mathématiques",
+  "classe": "CM1",
+  "date": "2026-05-21",
+  "duree": "45 min",
+  "deroulement": [],
+  "resultats_attendus": ""
 }
 ```
 
 Le champ `utilisateur_email` est facultatif. S’il est absent, la fiche est rattachée au compte de démonstration.
 
-Pour une action GPT, configurer l’authentification en clé API avec l’en-tête `x-import-secret`. Le corps JSON ne doit contenir que la fiche et, si utile, `utilisateur_email`.
+Pour une action GPT, configurer l’authentification en clé API avec l’en-tête `x-import-secret`. Le corps JSON doit contenir directement les champs de la fiche.
 
 Clé de test recommandée pour l’action GPT : `CLE_SECURISEE`.
 
