@@ -1,0 +1,7 @@
+.next/
+node_modules/
+data/database.json
+.env.local
+.env*.local
+dist/
+coverage/
