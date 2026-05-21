@@ -18,7 +18,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   }
 
   const buffer = await buildFichePdf(fiche);
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${fiche.titre.replace(/[^a-z0-9-]+/gi, "_")}.pdf"`
