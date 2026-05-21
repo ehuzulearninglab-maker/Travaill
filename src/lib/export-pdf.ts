@@ -16,6 +16,7 @@ type PdfLine = {
   gapBefore?: number;
   indent?: number;
 };
+type PdfLineOptions = Omit<PdfLine, "text">;
 
 function normalizeText(value: string): string {
   return (value || " ")
@@ -59,7 +60,7 @@ function wrapText(text: string, maxLength: number): string[] {
   return lines.length ? lines : [" "];
 }
 
-function pushWrappedLine(lines: PdfLine[], text: string, options: PdfLine = {}, maxLength = 92) {
+function pushWrappedLine(lines: PdfLine[], text: string, options: PdfLineOptions = {}, maxLength = 92) {
   wrapText(text, maxLength).forEach((line, index) => {
     lines.push({
       ...options,
@@ -183,4 +184,3 @@ function createPdf(pageStreams: string[]): Buffer {
 export async function buildFichePdf(fiche: FicheRecord): Promise<Buffer> {
   return createPdf(paginate(buildLines(fiche)));
 }
-
