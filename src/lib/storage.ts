@@ -17,6 +17,7 @@ type PgRow = Record<string, unknown>;
 const globalForPg = globalThis as typeof globalThis & {
   fichesPool?: PgPool;
   fichesSeeded?: boolean;
+  fichesLocalDb?: DatabaseShape;
 };
 
 function nowIso(): string {
@@ -227,12 +228,20 @@ async function ensurePostgresSeed(): Promise<void> {
 }
 
 async function readDatabase(): Promise<DatabaseShape> {
+  if (globalForPg.fichesLocalDb) {
+    return globalForPg.fichesLocalDb;
+  }
+
   try {
     const raw = await fs.readFile(DATA_FILE, "utf8");
-    return JSON.parse(raw) as DatabaseShape;
+    const db = JSON.parse(raw) as DatabaseShape;
+    globalForPg.fichesLocalDb = db;
+    return db;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
+      const db = initialDatabase();
+      globalForPg.fichesLocalDb = db;
+      return db;
     }
 
     const db = initialDatabase();
@@ -242,8 +251,14 @@ async function readDatabase(): Promise<DatabaseShape> {
 }
 
 async function writeDatabase(db: DatabaseShape): Promise<void> {
-  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-  await fs.writeFile(DATA_FILE, `${JSON.stringify(db, null, 2)}\n`, "utf8");
+  globalForPg.fichesLocalDb = db;
+  try {
+    await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+    await fs.writeFile(DATA_FILE, `${JSON.stringify(db, null, 2)}\n`, "utf8");
+  } catch {
+    // En hébergement serverless sans DATABASE_URL, le système de fichiers peut être en lecture seule.
+    // On garde alors un stockage mémoire pour que l'application reste utilisable.
+  }
 }
 
 export async function getUserByEmail(email: string): Promise<UserRecord | undefined> {
