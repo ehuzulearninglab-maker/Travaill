@@ -1,10 +1,9 @@
 import {
-  DEROULEMENT_COLUMNS,
   HEADER_FIELDS,
+  OFFICIAL_DEROULEMENT_COLUMNS,
   PLANNING_FIELDS,
   getExtraSections,
-  getFinalSections,
-  normaliseDeroulement,
+  normaliseOfficialDeroulement,
   readField,
   valueToText
 } from "@/lib/fiche-utils";
@@ -24,16 +23,13 @@ function FieldCell({ fieldKey, label, contenu }: { fieldKey: string; label: stri
 }
 
 export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
-  const deroulement = normaliseDeroulement(contenu);
+  const deroulement = normaliseOfficialDeroulement(contenu);
   const ficheDe = valueToText(readField(contenu, "fiche_de")) || "Fiche pédagogique";
-  const finalSections = [
-    ...getFinalSections(contenu),
-    ...getExtraSections(contenu).map((section) => ({
-      key: section.key,
-      label: section.label,
-      value: valueToText(section.value)
-    }))
-  ];
+  const extraSections = getExtraSections(contenu).map((section) => ({
+    key: section.key,
+    label: section.label,
+    value: valueToText(section.value)
+  }));
 
   return (
     <div className="canevas-scroll">
@@ -77,11 +73,11 @@ export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
         </section>
 
         <section className="bloc-canevas">
-          <h2>Déroulement</h2>
+          <h2 className="titre-deroulement">Déroulement</h2>
           <table className="table-canevas table-deroulement">
             <thead>
               <tr>
-                {DEROULEMENT_COLUMNS.map((column) => (
+                {OFFICIAL_DEROULEMENT_COLUMNS.map((column) => (
                   <th key={column.key}>{column.label}</th>
                 ))}
               </tr>
@@ -89,41 +85,34 @@ export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
             <tbody>
               {deroulement.length > 0 ? (
                 deroulement.map((row, index) => (
-                  <tr key={`${row.etape || "ligne"}-${index}`}>
-                    {DEROULEMENT_COLUMNS.map((column) => (
+                  <tr key={`deroulement-${index}`}>
+                    {OFFICIAL_DEROULEMENT_COLUMNS.map((column) => (
                       <td key={column.key}>
                         <TextBlock value={row[column.key]} />
                       </td>
                     ))}
                   </tr>
                 ))
-              ) : (
+              ) : extraSections.length === 0 ? (
                 <tr>
-                  <td colSpan={DEROULEMENT_COLUMNS.length} className="cellule-vide">
+                  <td colSpan={OFFICIAL_DEROULEMENT_COLUMNS.length} className="cellule-vide">
                     Aucun déroulement détaillé n'a été reçu.
                   </td>
                 </tr>
-              )}
+              ) : null}
+              {extraSections.map((section) => (
+                <tr key={section.key}>
+                  <td>
+                    <TextBlock value={`${section.label}\n${section.value}`} />
+                  </td>
+                  <td>
+                    <TextBlock value="" />
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </section>
-
-        {finalSections.length > 0 ? (
-          <section className="bloc-canevas">
-            <table className="table-canevas table-final">
-              <tbody>
-                {finalSections.map((section) => (
-                  <tr key={section.key}>
-                    <th>{section.label}</th>
-                    <td>
-                      <TextBlock value={section.value} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        ) : null}
       </article>
     </div>
   );

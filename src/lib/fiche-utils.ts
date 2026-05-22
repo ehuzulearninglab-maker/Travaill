@@ -181,6 +181,13 @@ export const FINAL_FIELDS: FieldDefinition[] = [
   { key: "resultats_attendus", label: "Résultats attendus" }
 ];
 
+export const OFFICIAL_DEROULEMENT_COLUMNS = [
+  { key: "consignes", label: "Consignes" },
+  { key: "resultats_attendus", label: "Résultats attendus" }
+] as const;
+
+export type OfficialDeroulementRow = Record<(typeof OFFICIAL_DEROULEMENT_COLUMNS)[number]["key"], string>;
+
 export const DEROULEMENT_COLUMNS = [
   { key: "etape", label: "Déroulement" },
   { key: "duree", label: "Durée" },
@@ -407,6 +414,71 @@ export function normaliseDeroulement(content: FicheContenu): DeroulementRow[] {
   };
 
   return hasRowContent(fallbackRow) ? [fallbackRow] : [];
+}
+
+function joinOfficialParts(parts: string[]): string {
+  return parts.map((part) => part.trim()).filter(Boolean).join("\n");
+}
+
+function labelledOfficialPart(label: string, value: string): string {
+  return value.trim() ? `${label} : ${value.trim()}` : "";
+}
+
+function comparableText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function officialRowContains(rows: OfficialDeroulementRow[], key: keyof OfficialDeroulementRow, value: string): boolean {
+  const wanted = comparableText(value);
+  if (!wanted) {
+    return true;
+  }
+
+  return rows.some((row) => {
+    const existing = comparableText(row[key]);
+    return existing.length > 0 && (existing.includes(wanted) || wanted.includes(existing));
+  });
+}
+
+function toOfficialDeroulementRow(row: DeroulementRow): OfficialDeroulementRow {
+  return {
+    consignes: joinOfficialParts([
+      labelledOfficialPart("Déroulement", row.etape),
+      labelledOfficialPart("Durée", row.duree),
+      labelledOfficialPart("Activités de l'enseignant", row.activites_enseignant),
+      row.consignes
+    ]),
+    resultats_attendus: joinOfficialParts([
+      labelledOfficialPart("Activités des apprenants", row.activites_apprenants),
+      row.resultats_attendus,
+      labelledOfficialPart("Évaluation", row.evaluation)
+    ])
+  };
+}
+
+export function normaliseOfficialDeroulement(content: FicheContenu): OfficialDeroulementRow[] {
+  const rows = normaliseDeroulement(content)
+    .map(toOfficialDeroulementRow)
+    .filter((row) => row.consignes.trim().length > 0 || row.resultats_attendus.trim().length > 0);
+
+  const consignes = valueToText(readField(content, "consignes"));
+  const resultats = valueToText(readField(content, "resultats_attendus"));
+  const alreadyShown =
+    officialRowContains(rows, "consignes", consignes) && officialRowContains(rows, "resultats_attendus", resultats);
+
+  if (!alreadyShown && (consignes.trim().length > 0 || resultats.trim().length > 0)) {
+    rows.push({
+      consignes,
+      resultats_attendus: resultats
+    });
+  }
+
+  return rows;
 }
 
 export function getFinalSections(content: FicheContenu): Array<{ key: string; label: string; value: string }> {

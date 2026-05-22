@@ -1,10 +1,9 @@
 import {
-  DEROULEMENT_COLUMNS,
-  FINAL_FIELDS,
   HEADER_FIELDS,
+  OFFICIAL_DEROULEMENT_COLUMNS,
   PLANNING_FIELDS,
   getExtraSections,
-  normaliseDeroulement,
+  normaliseOfficialDeroulement,
   readField,
   valueToText
 } from "@/lib/fiche-utils";
@@ -40,23 +39,28 @@ function escapePdfString(value: string): string {
 }
 
 function wrapText(text: string, maxLength: number): string[] {
-  const words = normalizeText(text).split(/\s+/).filter(Boolean);
   const lines: string[] = [];
-  let current = "";
 
-  words.forEach((word) => {
-    const next = current ? `${current} ${word}` : word;
-    if (next.length > maxLength && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = next;
-    }
+  normalizeText(text)
+    .split(/\n+/)
+    .forEach((paragraph) => {
+      const words = paragraph.split(/\s+/).filter(Boolean);
+      let current = "";
+
+      words.forEach((word) => {
+        const next = current ? `${current} ${word}` : word;
+        if (next.length > maxLength && current) {
+          lines.push(current);
+          current = word;
+        } else {
+          current = next;
+        }
+      });
+
+      if (current) {
+        lines.push(current);
+      }
   });
-
-  if (current) {
-    lines.push(current);
-  }
 
   return lines.length ? lines : [" "];
 }
@@ -216,39 +220,18 @@ function renderFiche(fiche: FicheRecord): string[] {
   addTitle("Deroulement", 11, 8);
   addTable(
     [
-      DEROULEMENT_COLUMNS.map((column) => ({ text: column.label, bold: true, fill: true })),
-      ...normaliseDeroulement(fiche.contenu_json).map((row) =>
-        DEROULEMENT_COLUMNS.map((column) => ({ text: row[column.key] }))
-      )
+      OFFICIAL_DEROULEMENT_COLUMNS.map((column) => ({ text: column.label, bold: true, fill: true })),
+      ...normaliseOfficialDeroulement(fiche.contenu_json).map((row) =>
+        OFFICIAL_DEROULEMENT_COLUMNS.map((column) => ({ text: row[column.key] }))
+      ),
+      ...getExtraSections(fiche.contenu_json).map((section) => [
+        { text: `${section.label}\n${valueToText(section.value)}` },
+        { text: "" }
+      ])
     ],
-    [70, 42, 86, 86, 80, 92, 67],
-    7
+    [356, CONTENT_WIDTH - 356],
+    8
   );
-
-  const finalRows = FINAL_FIELDS.map((field) => ({
-    field,
-    value: valueToText(readField(fiche.contenu_json, field.key))
-  })).filter((item) => item.value.trim().length > 0);
-  const extraRows = getExtraSections(fiche.contenu_json).map((section) => ({
-    label: section.label,
-    value: valueToText(section.value)
-  }));
-  if (finalRows.length > 0 || extraRows.length > 0) {
-    addTable(
-      [
-        ...finalRows.map((section) => [
-          { text: section.field.label, bold: true, fill: true },
-          { text: section.value }
-        ]),
-        ...extraRows.map((section) => [
-          { text: section.label, bold: true, fill: true },
-          { text: section.value }
-        ])
-      ],
-      [168, CONTENT_WIDTH - 168],
-      8
-    );
-  }
 
   flushPage();
   return pages;

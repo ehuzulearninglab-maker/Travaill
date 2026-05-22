@@ -98,6 +98,13 @@ textarea {
   margin: 0 0 8px;
 }
 
+.bloc-canevas .titre-deroulement {
+  font-size: 24px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .table-canevas {
   width: 100%;
   border-collapse: collapse;
@@ -129,36 +136,26 @@ textarea {
 
 .table-deroulement th,
 .table-deroulement td {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .table-deroulement th:nth-child(1),
 .table-deroulement td:nth-child(1) {
-  width: 14%;
+  width: 68%;
 }
 
 .table-deroulement th:nth-child(2),
 .table-deroulement td:nth-child(2) {
-  width: 8%;
+  width: 32%;
 }
 
-.table-deroulement th:nth-child(3),
-.table-deroulement td:nth-child(3),
-.table-deroulement th:nth-child(4),
-.table-deroulement td:nth-child(4) {
-  width: 16%;
+.table-deroulement thead th {
+  font-size: 15px;
+  text-align: center;
 }
 
-.table-deroulement th:nth-child(5),
-.table-deroulement td:nth-child(5),
-.table-deroulement th:nth-child(6),
-.table-deroulement td:nth-child(6) {
-  width: 15%;
-}
-
-.table-deroulement th:nth-child(7),
-.table-deroulement td:nth-child(7) {
-  width: 16%;
+.table-deroulement tbody td {
+  min-height: 180px;
 }
 
 .libelle-canevas {

@@ -11,12 +11,11 @@ import {
   WidthType
 } from "docx";
 import {
-  DEROULEMENT_COLUMNS,
-  FINAL_FIELDS,
   HEADER_FIELDS,
+  OFFICIAL_DEROULEMENT_COLUMNS,
   PLANNING_FIELDS,
   getExtraSections,
-  normaliseDeroulement,
+  normaliseOfficialDeroulement,
   readField,
   valueToText
 } from "@/lib/fiche-utils";
@@ -35,8 +34,9 @@ function labeledCell(label: string, value: string): TableCell {
 }
 
 function cell(text: string, bold = false): TableCell {
+  const lines = (text || " ").split(/\n/);
   return new TableCell({
-    children: [paragraph(text, bold)]
+    children: lines.map((line) => paragraph(line, bold))
   });
 }
 
@@ -61,31 +61,20 @@ export async function buildFicheWord(fiche: FicheRecord): Promise<Buffer> {
 
   const deroulementRows = [
     new TableRow({
-      children: DEROULEMENT_COLUMNS.map((column) => cell(column.label, true))
+      children: OFFICIAL_DEROULEMENT_COLUMNS.map((column) => cell(column.label, true))
     }),
-    ...normaliseDeroulement(contenu).map(
+    ...normaliseOfficialDeroulement(contenu).map(
       (row) =>
         new TableRow({
-          children: DEROULEMENT_COLUMNS.map((column) => cell(row[column.key]))
+          children: OFFICIAL_DEROULEMENT_COLUMNS.map((column) => cell(row[column.key]))
         })
     )
   ];
 
-  const finalRows = FINAL_FIELDS.map((field) => ({
-    field,
-    value: valueToText(readField(contenu, field.key))
-  }))
-    .filter((item) => item.value.trim().length > 0)
-    .map(
-      (item) =>
-        new TableRow({
-          children: [cell(item.field.label, true), cell(item.value)]
-        })
-    );
   const extraRows = getExtraSections(contenu).map(
     (section) =>
       new TableRow({
-        children: [cell(section.label, true), cell(valueToText(section.value))]
+        children: [cell(`${section.label}\n${valueToText(section.value)}`), cell("")]
       })
   );
 
@@ -120,19 +109,9 @@ export async function buildFicheWord(fiche: FicheRecord): Promise<Buffer> {
     }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: deroulementRows
+      rows: [...deroulementRows, ...extraRows]
     })
   ];
-
-  if (finalRows.length > 0 || extraRows.length > 0) {
-    children.push(
-      new Paragraph({ children: [] }),
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [...finalRows, ...extraRows]
-      })
-    );
-  }
 
   const doc = new Document({
     sections: [

@@ -2,9 +2,9 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import {
-  DEROULEMENT_COLUMNS,
   FINAL_FIELDS,
   HEADER_FIELDS,
+  OFFICIAL_DEROULEMENT_COLUMNS,
   PLANNING_FIELDS,
   getExtraSections,
   normaliseDeroulement,
@@ -108,7 +108,7 @@ export function FicheEditor({
                 </button>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                {DEROULEMENT_COLUMNS.map((column) => (
+                {OFFICIAL_DEROULEMENT_COLUMNS.map((column) => (
                   <label key={column.key} className="text-sm font-semibold text-stone-700">
                     {column.label}
                     <textarea
