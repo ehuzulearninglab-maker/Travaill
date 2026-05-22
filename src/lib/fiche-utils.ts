@@ -176,6 +176,11 @@ export const PLANNING_FIELDS: FieldDefinition[] = [
   { key: "materiel", label: "Matériel" }
 ];
 
+export const FINAL_FIELDS: FieldDefinition[] = [
+  { key: "consignes", label: "Consignes" },
+  { key: "resultats_attendus", label: "Résultats attendus" }
+];
+
 export const DEROULEMENT_COLUMNS = [
   { key: "etape", label: "Déroulement" },
   { key: "duree", label: "Durée" },
@@ -337,11 +342,28 @@ function rawDeroulementItems(raw: JsonValue | undefined): JsonValue[] {
 
   if (raw && typeof raw === "object") {
     const record = raw as Record<string, JsonValue>;
-    const nested = lookupInObject(record, "deroulement") || lookupInObject(record, "etapes");
+    const nested =
+      lookupInObject(record, "deroulement") ||
+      lookupInObject(record, "etapes") ||
+      lookupInObject(record, "phases") ||
+      lookupInObject(record, "lignes") ||
+      lookupInObject(record, "tableau");
     if (Array.isArray(nested)) {
       return nested;
     }
-    return Object.values(record);
+
+    const hasRowField = Object.values(ROW_ALIASES).some((aliases) =>
+      Object.keys(record).some((key) => aliases.map(slugKey).includes(slugKey(key)))
+    );
+    if (hasRowField) {
+      return [record as JsonValue];
+    }
+
+    const values = Object.values(record);
+    if (values.every((value) => value && typeof value === "object" && !Array.isArray(value))) {
+      return values;
+    }
+    return values;
   }
 
   return [];
@@ -387,6 +409,14 @@ export function normaliseDeroulement(content: FicheContenu): DeroulementRow[] {
   return hasRowContent(fallbackRow) ? [fallbackRow] : [];
 }
 
+export function getFinalSections(content: FicheContenu): Array<{ key: string; label: string; value: string }> {
+  return FINAL_FIELDS.map((field) => ({
+    key: field.key,
+    label: field.label,
+    value: valueToText(readField(content, field.key))
+  })).filter((section) => section.value.trim().length > 0);
+}
+
 export function setContentField(content: FicheContenu, key: string, value: string): FicheContenu {
   return {
     ...content,
@@ -426,6 +456,9 @@ export function inferFicheMeta(content: FicheContenu): {
 function consumedSlugs(): Set<string> {
   const consumed = new Set<string>();
   [...HEADER_FIELDS, ...PLANNING_FIELDS].forEach((field) => {
+    aliasesFor(field.key).forEach((key) => consumed.add(slugKey(key)));
+  });
+  FINAL_FIELDS.forEach((field) => {
     aliasesFor(field.key).forEach((key) => consumed.add(slugKey(key)));
   });
   aliasesFor("deroulement").forEach((key) => consumed.add(slugKey(key)));

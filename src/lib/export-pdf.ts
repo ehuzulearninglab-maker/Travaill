@@ -1,5 +1,6 @@
 import {
   DEROULEMENT_COLUMNS,
+  FINAL_FIELDS,
   HEADER_FIELDS,
   PLANNING_FIELDS,
   getExtraSections,
@@ -138,12 +139,20 @@ function renderFiche(fiche: FicheRecord): string[] {
     y -= size + gap;
   }
 
-  function drawCell(x: number, top: number, width: number, height: number, cell: PdfCell, size = 8) {
+  function drawCell(
+    x: number,
+    top: number,
+    width: number,
+    height: number,
+    cell: PdfCell,
+    size = 8,
+    linesOverride?: string[]
+  ) {
     if (cell.fill) {
       commands.push(`q 0.94 0.88 0.78 rg ${x} ${top - height} ${width} ${height} re f Q`);
     }
     commands.push(`${x} ${top - height} ${width} ${height} re S`);
-    const lines = estimateLines(cell, width - 8).slice(0, Math.max(1, Math.floor((height - 8) / (size + 3))));
+    const lines = linesOverride ?? estimateLines(cell, width - 8);
     const font = cell.bold ? "F2" : "F1";
     lines.forEach((line, index) => {
       commands.push(`BT /${font} ${size} Tf ${x + 4} ${top - 12 - index * (size + 3)} Td (${escapePdfString(line)}) Tj ET`);
@@ -152,15 +161,29 @@ function renderFiche(fiche: FicheRecord): string[] {
 
   function addTable(rows: PdfCell[][], widths: number[], size = 8) {
     rows.forEach((row) => {
-      const lineCounts = row.map((cell, index) => estimateLines(cell, widths[index] - 8).length);
-      const height = Math.max(24, Math.min(98, Math.max(...lineCounts) * (size + 3) + 12));
-      ensureSpace(height + 4);
-      let x = MARGIN;
-      row.forEach((cell, index) => {
-        drawCell(x, y, widths[index], height, cell, size);
-        x += widths[index];
-      });
-      y -= height;
+      const rowLines = row.map((cell, index) => estimateLines(cell, widths[index] - 8));
+      const maxLineCount = Math.max(...rowLines.map((lines) => lines.length), 1);
+      let lineOffset = 0;
+
+      while (lineOffset < maxLineCount) {
+        if (y - 36 < MARGIN) {
+          flushPage();
+        }
+
+        const availableLines = Math.max(1, Math.floor((y - MARGIN - 12) / (size + 3)));
+        const chunkLineCount = Math.min(maxLineCount - lineOffset, availableLines);
+        const height = Math.max(24, chunkLineCount * (size + 3) + 12);
+        ensureSpace(height + 4);
+
+        let x = MARGIN;
+        row.forEach((cell, index) => {
+          const lines = rowLines[index].slice(lineOffset, lineOffset + chunkLineCount);
+          drawCell(x, y, widths[index], height, cell, size, lines.length ? lines : [" "]);
+          x += widths[index];
+        });
+        y -= height;
+        lineOffset += chunkLineCount;
+      }
     });
     y -= 14;
   }
@@ -190,7 +213,7 @@ function renderFiche(fiche: FicheRecord): string[] {
     8
   );
 
-  addTitle("Grand tableau pedagogique", 11, 8);
+  addTitle("Deroulement", 11, 8);
   addTable(
     [
       DEROULEMENT_COLUMNS.map((column) => ({ text: column.label, bold: true, fill: true })),
@@ -202,14 +225,26 @@ function renderFiche(fiche: FicheRecord): string[] {
     7
   );
 
-  const extras = getExtraSections(fiche.contenu_json);
-  if (extras.length > 0) {
-    addTitle("Informations complementaires", 11, 8);
+  const finalRows = FINAL_FIELDS.map((field) => ({
+    field,
+    value: valueToText(readField(fiche.contenu_json, field.key))
+  })).filter((item) => item.value.trim().length > 0);
+  const extraRows = getExtraSections(fiche.contenu_json).map((section) => ({
+    label: section.label,
+    value: valueToText(section.value)
+  }));
+  if (finalRows.length > 0 || extraRows.length > 0) {
     addTable(
-      extras.map((section) => [
-        { text: section.label, bold: true, fill: true },
-        { text: valueToText(section.value) }
-      ]),
+      [
+        ...finalRows.map((section) => [
+          { text: section.field.label, bold: true, fill: true },
+          { text: section.value }
+        ]),
+        ...extraRows.map((section) => [
+          { text: section.label, bold: true, fill: true },
+          { text: section.value }
+        ])
+      ],
       [168, CONTENT_WIDTH - 168],
       8
     );

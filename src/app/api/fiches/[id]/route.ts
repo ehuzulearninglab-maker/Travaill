@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/current-user";
-import { getFiche, updateFiche } from "@/lib/storage";
+import { deleteFiche, getFiche, updateFiche } from "@/lib/storage";
 import type { FicheContenu } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -38,4 +38,19 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   return NextResponse.json({ succes: true, fiche });
+}
+
+export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ message: "Connexion requise." }, { status: 401 });
+  }
+
+  const { id } = await context.params;
+  const deleted = await deleteFiche(id, user.id);
+  if (!deleted) {
+    return NextResponse.json({ message: "Fiche introuvable." }, { status: 404 });
+  }
+
+  return NextResponse.json({ succes: true });
 }

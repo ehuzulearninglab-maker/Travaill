@@ -12,6 +12,7 @@ import {
 } from "docx";
 import {
   DEROULEMENT_COLUMNS,
+  FINAL_FIELDS,
   HEADER_FIELDS,
   PLANNING_FIELDS,
   getExtraSections,
@@ -70,8 +71,22 @@ export async function buildFicheWord(fiche: FicheRecord): Promise<Buffer> {
     )
   ];
 
+  const finalRows = FINAL_FIELDS.map((field) => ({
+    field,
+    value: valueToText(readField(contenu, field.key))
+  }))
+    .filter((item) => item.value.trim().length > 0)
+    .map(
+      (item) =>
+        new TableRow({
+          children: [cell(item.field.label, true), cell(item.value)]
+        })
+    );
   const extraRows = getExtraSections(contenu).map(
-    (section) => new TableRow({ children: [cell(section.label, true), cell(valueToText(section.value))] })
+    (section) =>
+      new TableRow({
+        children: [cell(section.label, true), cell(valueToText(section.value))]
+      })
   );
 
   const children = [
@@ -101,7 +116,7 @@ export async function buildFicheWord(fiche: FicheRecord): Promise<Buffer> {
     new Paragraph({ children: [] }),
     new Paragraph({
       heading: HeadingLevel.HEADING_2,
-      children: [new TextRun({ text: "Grand tableau pédagogique" })]
+      children: [new TextRun({ text: "Déroulement" })]
     }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -109,16 +124,12 @@ export async function buildFicheWord(fiche: FicheRecord): Promise<Buffer> {
     })
   ];
 
-  if (extraRows.length > 0) {
+  if (finalRows.length > 0 || extraRows.length > 0) {
     children.push(
       new Paragraph({ children: [] }),
-      new Paragraph({
-        heading: HeadingLevel.HEADING_2,
-        children: [new TextRun({ text: "Informations complémentaires" })]
-      }),
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: extraRows
+        rows: [...finalRows, ...extraRows]
       })
     );
   }

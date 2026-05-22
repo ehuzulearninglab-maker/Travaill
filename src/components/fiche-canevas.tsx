@@ -3,6 +3,7 @@ import {
   HEADER_FIELDS,
   PLANNING_FIELDS,
   getExtraSections,
+  getFinalSections,
   normaliseDeroulement,
   readField,
   valueToText
@@ -25,7 +26,14 @@ function FieldCell({ fieldKey, label, contenu }: { fieldKey: string; label: stri
 export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
   const deroulement = normaliseDeroulement(contenu);
   const ficheDe = valueToText(readField(contenu, "fiche_de")) || "Fiche pédagogique";
-  const extras = getExtraSections(contenu);
+  const finalSections = [
+    ...getFinalSections(contenu),
+    ...getExtraSections(contenu).map((section) => ({
+      key: section.key,
+      label: section.label,
+      value: valueToText(section.value)
+    }))
+  ];
 
   return (
     <div className="canevas-scroll">
@@ -69,7 +77,7 @@ export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
         </section>
 
         <section className="bloc-canevas">
-          <h2>Grand tableau pédagogique</h2>
+          <h2>Déroulement</h2>
           <table className="table-canevas table-deroulement">
             <thead>
               <tr>
@@ -92,7 +100,7 @@ export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
               ) : (
                 <tr>
                   <td colSpan={DEROULEMENT_COLUMNS.length} className="cellule-vide">
-                    Aucun contenu de déroulement n'a été reçu.
+                    Aucun déroulement détaillé n'a été reçu.
                   </td>
                 </tr>
               )}
@@ -100,16 +108,15 @@ export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
           </table>
         </section>
 
-        {extras.length > 0 ? (
-          <section className="bloc-canevas bloc-complements">
-            <h2>Informations complémentaires</h2>
-            <table className="table-canevas table-complements">
+        {finalSections.length > 0 ? (
+          <section className="bloc-canevas">
+            <table className="table-canevas table-final">
               <tbody>
-                {extras.map((section) => (
+                {finalSections.map((section) => (
                   <tr key={section.key}>
                     <th>{section.label}</th>
                     <td>
-                      <TextBlock value={valueToText(section.value)} />
+                      <TextBlock value={section.value} />
                     </td>
                   </tr>
                 ))}

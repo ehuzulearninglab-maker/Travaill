@@ -122,7 +122,7 @@ textarea {
 }
 
 .table-planification th,
-.table-complements th {
+.table-final th {
   width: 32%;
   text-align: left;
 }

@@ -37,3 +37,12 @@ export function getCachedFiche(id: string): FicheRecord | undefined {
   return readCache()[id];
 }
 
+export function removeCachedFiche(id: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const cache = readCache();
+  delete cache[id];
+  window.localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+}

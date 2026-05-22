@@ -496,6 +496,29 @@ export async function updateFiche(
   return updated;
 }
 
+export async function deleteFiche(id: string, userId: string): Promise<boolean> {
+  if (usePostgres()) {
+    await ensurePostgresSeed();
+    const pool = await getPool();
+    const result = await pool.query("delete from fiches where id = $1 and utilisateur_id = $2 returning id", [
+      id,
+      userId
+    ]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  const db = await readDatabase();
+  const before = db.fiches.length;
+  db.fiches = db.fiches.filter((fiche) => !(fiche.id === id && fiche.utilisateur_id === userId));
+  if (db.fiches.length === before) {
+    return false;
+  }
+
+  db.historique = db.historique.filter((entry) => entry.fiche_id !== id);
+  await writeDatabase(db);
+  return true;
+}
+
 export async function listHistorique(ficheId: string, userId: string): Promise<HistoriqueRecord[]> {
   if (usePostgres()) {
     await ensurePostgresSeed();

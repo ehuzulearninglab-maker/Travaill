@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Download, FileText, Filter, PencilLine, Plus, Search } from "lucide-react";
-import { cacheFiches } from "@/lib/client-fiche-cache";
+import { Download, FileText, Filter, PencilLine, Plus, Search, Trash2 } from "lucide-react";
+import { cacheFiches, removeCachedFiche } from "@/lib/client-fiche-cache";
 import { telechargerFiche } from "@/lib/client-download";
 import type { FicheRecord } from "@/lib/types";
 
@@ -49,6 +49,22 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
     if (response.ok) {
       await refresh();
     }
+  }
+
+  async function deleteFiche(id: string) {
+    const confirmed = window.confirm("Supprimer définitivement cette fiche ?");
+    if (!confirmed) {
+      return;
+    }
+
+    const response = await fetch(`/api/fiches/${id}`, { method: "DELETE" });
+    if (response.ok || response.status === 404) {
+      removeCachedFiche(id);
+      setFiches((current) => current.filter((fiche) => fiche.id !== id));
+      return;
+    }
+
+    window.alert("La fiche n'a pas pu être supprimée. Veuillez réessayer.");
   }
 
   return (
@@ -132,6 +148,10 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
               >
                 <Download size={16} aria-hidden="true" />
                 PDF
+              </button>
+              <button type="button" onClick={() => deleteFiche(fiche.id)} className="bouton-danger">
+                <Trash2 size={16} aria-hidden="true" />
+                Supprimer
               </button>
             </div>
           </article>

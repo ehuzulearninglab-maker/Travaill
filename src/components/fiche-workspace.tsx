@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock3, Download, FileDown, PencilLine, Printer, Save, TableProperties } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Clock3, Download, FileDown, PencilLine, Printer, Save, TableProperties, Trash2 } from "lucide-react";
 import { FicheCanevas } from "@/components/fiche-canevas";
 import { FicheEditor } from "@/components/fiche-editor";
-import { cacheFiche } from "@/lib/client-fiche-cache";
+import { cacheFiche, removeCachedFiche } from "@/lib/client-fiche-cache";
 import { telechargerFiche } from "@/lib/client-download";
 import type { FicheContenu, FicheRecord, HistoriqueRecord } from "@/lib/types";
 
@@ -18,6 +19,7 @@ export function FicheWorkspace({
   fiche: FicheRecord;
   historique: HistoriqueRecord[];
 }) {
+  const router = useRouter();
   const [contenu, setContenu] = useState<FicheContenu>(fiche.contenu_json);
   const [onglet, setOnglet] = useState<Onglet>("apercu");
   const [historyItems, setHistoryItems] = useState(historique);
@@ -25,6 +27,23 @@ export function FicheWorkspace({
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const firstRun = useRef(true);
   const currentFiche: FicheRecord = { ...fiche, contenu_json: contenu };
+
+  async function deleteCurrentFiche() {
+    const confirmed = window.confirm("Supprimer définitivement cette fiche ?");
+    if (!confirmed) {
+      return;
+    }
+
+    const response = await fetch(`/api/fiches/${fiche.id}`, { method: "DELETE" });
+    if (response.ok || response.status === 404) {
+      removeCachedFiche(fiche.id);
+      router.push("/tableau-de-bord");
+      router.refresh();
+      return;
+    }
+
+    window.alert("La fiche n'a pas pu être supprimée. Veuillez réessayer.");
+  }
 
   useEffect(() => {
     cacheFiche({ ...fiche, contenu_json: contenu });
@@ -106,6 +125,10 @@ export function FicheWorkspace({
             <button type="button" onClick={() => window.print()} className="bouton-primaire">
               <Printer size={16} aria-hidden="true" />
               Imprimer
+            </button>
+            <button type="button" onClick={deleteCurrentFiche} className="bouton-danger">
+              <Trash2 size={16} aria-hidden="true" />
+              Supprimer
             </button>
           </div>
         </div>

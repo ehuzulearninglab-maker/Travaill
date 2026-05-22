@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import {
   DEROULEMENT_COLUMNS,
+  FINAL_FIELDS,
   HEADER_FIELDS,
   PLANNING_FIELDS,
   getExtraSections,
@@ -129,9 +130,25 @@ export function FicheEditor({
         </div>
       </section>
 
+      <section className="rounded-md border border-stone-200 bg-white p-4">
+        <h2 className="mb-4 text-lg font-black text-encre">Consignes et résultats attendus</h2>
+        <div className="grid gap-4">
+          {FINAL_FIELDS.map((field) => (
+            <label key={field.key} className="text-sm font-semibold text-stone-700">
+              {field.label}
+              <textarea
+                className="champ mt-1"
+                value={valueToText(readField(contenu, field.key))}
+                onChange={(event) => updateField(field.key, event.target.value)}
+              />
+            </label>
+          ))}
+        </div>
+      </section>
+
       {extras.length > 0 ? (
         <section className="rounded-md border border-stone-200 bg-white p-4">
-          <h2 className="mb-4 text-lg font-black text-encre">Informations complémentaires</h2>
+          <h2 className="mb-4 text-lg font-black text-encre">Champs reçus non classés</h2>
           <div className="grid gap-4">
             {extras.map((section) => (
               <label key={section.key} className="text-sm font-semibold text-stone-700">
