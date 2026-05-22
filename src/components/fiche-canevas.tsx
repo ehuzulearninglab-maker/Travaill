@@ -10,7 +10,16 @@ import {
 import type { FicheContenu } from "@/lib/types";
 
 function TextBlock({ value }: { value: string }) {
-  return <div className="texte-canevas min-h-6 text-sm leading-relaxed">{value || "\u00a0"}</div>;
+  return <div className="texte-canevas min-h-[18px] leading-snug">{value || "\u00a0"}</div>;
+}
+
+function FieldCell({ fieldKey, label, contenu }: { fieldKey: string; label: string; contenu: FicheContenu }) {
+  return (
+    <td>
+      <span className="libelle-canevas">{label}</span>
+      <TextBlock value={valueToText(readField(contenu, fieldKey))} />
+    </td>
+  );
 }
 
 export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
@@ -19,37 +28,37 @@ export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
   const extras = getExtraSections(contenu);
 
   return (
-    <article className="feuille-pedagogique mx-auto w-full max-w-[1120px] rounded-md p-4 sm:p-7">
-      <div className="mb-5 border-b-2 border-stone-800 pb-4 text-center">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brun">Canevas pédagogique</p>
-        <h1 className="mt-2 text-2xl font-black text-encre sm:text-3xl">Fiche de {ficheDe}</h1>
-      </div>
+    <div className="canevas-scroll">
+      <article className="feuille-pedagogique fiche-a4">
+        <header className="entete-fiche">
+          <p>Canevas pédagogique</p>
+          <h1>Fiche de {ficheDe}</h1>
+        </header>
 
-      <section aria-label="Informations générales" className="mb-6 overflow-x-auto">
-        <table className="table-canevas min-w-[760px]">
-          <tbody>
-            {[0, 4].map((start) => (
-              <tr key={start}>
-                {HEADER_FIELDS.slice(start, start + 4).map((field) => (
-                  <td key={field.key} className="w-1/4">
-                    <span className="block text-xs font-bold uppercase text-stone-700">{field.label}</span>
-                    <TextBlock value={valueToText(readField(contenu, field.key))} />
-                  </td>
+        <section aria-label="Identification de la fiche">
+          <table className="table-canevas table-identification">
+            <tbody>
+              <tr>
+                {HEADER_FIELDS.slice(0, 4).map((field) => (
+                  <FieldCell key={field.key} fieldKey={field.key} label={field.label} contenu={contenu} />
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+              <tr>
+                {HEADER_FIELDS.slice(4, 8).map((field) => (
+                  <FieldCell key={field.key} fieldKey={field.key} label={field.label} contenu={contenu} />
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </section>
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-lg font-black text-encre">Éléments de planification</h2>
-        <div className="overflow-x-auto">
-          <table className="table-canevas min-w-[760px]">
+        <section className="bloc-canevas">
+          <h2>Éléments de planification</h2>
+          <table className="table-canevas table-planification">
             <tbody>
               {PLANNING_FIELDS.map((field) => (
                 <tr key={field.key}>
-                  <th className="w-[32%] text-left text-sm">{field.label}</th>
+                  <th>{field.label}</th>
                   <td>
                     <TextBlock value={valueToText(readField(contenu, field.key))} />
                   </td>
@@ -57,28 +66,24 @@ export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
               ))}
             </tbody>
           </table>
-        </div>
-      </section>
+        </section>
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-lg font-black text-encre">Grand tableau pédagogique</h2>
-        <div className="overflow-x-auto">
-          <table className="table-canevas min-w-[980px]">
+        <section className="bloc-canevas">
+          <h2>Grand tableau pédagogique</h2>
+          <table className="table-canevas table-deroulement">
             <thead>
               <tr>
                 {DEROULEMENT_COLUMNS.map((column) => (
-                  <th key={column.key} className="text-left text-xs">
-                    {column.label}
-                  </th>
+                  <th key={column.key}>{column.label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {deroulement.length > 0 ? (
                 deroulement.map((row, index) => (
-                  <tr key={`${row.etape}-${index}`}>
+                  <tr key={`${row.etape || "ligne"}-${index}`}>
                     {DEROULEMENT_COLUMNS.map((column) => (
-                      <td key={column.key} className="text-sm">
+                      <td key={column.key}>
                         <TextBlock value={row[column.key]} />
                       </td>
                     ))}
@@ -86,25 +91,23 @@ export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={DEROULEMENT_COLUMNS.length} className="text-center text-sm text-stone-500">
-                    Aucun déroulement détaillé reçu pour le moment.
+                  <td colSpan={DEROULEMENT_COLUMNS.length} className="cellule-vide">
+                    Aucun contenu de déroulement n'a été reçu.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
-      </section>
+        </section>
 
-      {extras.length > 0 ? (
-        <section>
-          <h2 className="mb-2 text-lg font-black text-encre">Sections supplémentaires</h2>
-          <div className="overflow-x-auto">
-            <table className="table-canevas min-w-[760px]">
+        {extras.length > 0 ? (
+          <section className="bloc-canevas bloc-complements">
+            <h2>Informations complémentaires</h2>
+            <table className="table-canevas table-complements">
               <tbody>
                 {extras.map((section) => (
                   <tr key={section.key}>
-                    <th className="w-[32%] text-left text-sm">{section.label}</th>
+                    <th>{section.label}</th>
                     <td>
                       <TextBlock value={valueToText(section.value)} />
                     </td>
@@ -112,9 +115,9 @@ export function FicheCanevas({ contenu }: { contenu: FicheContenu }) {
                 ))}
               </tbody>
             </table>
-          </div>
-        </section>
-      ) : null}
-    </article>
+          </section>
+        ) : null}
+      </article>
+    </div>
   );
 }

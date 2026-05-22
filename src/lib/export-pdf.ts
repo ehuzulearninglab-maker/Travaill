@@ -9,14 +9,16 @@ import {
 } from "@/lib/fiche-utils";
 import type { FicheRecord } from "@/lib/types";
 
-type PdfLine = {
+type PdfCell = {
   text: string;
-  size?: number;
   bold?: boolean;
-  gapBefore?: number;
-  indent?: number;
+  fill?: boolean;
 };
-type PdfLineOptions = Omit<PdfLine, "text">;
+
+const PAGE_WIDTH = 595;
+const PAGE_HEIGHT = 842;
+const MARGIN = 36;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 
 function normalizeText(value: string): string {
   return (value || " ")
@@ -29,9 +31,7 @@ function normalizeText(value: string): string {
     .replace(/œ/g, "oe")
     .replace(/Œ/g, "OE")
     .replace(/€/g, "EUR")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\x09\x0a\x0d\x20-\x7e]/g, "");
+    .replace(/[^\x09\x0a\x0d\x20-\xff]/g, "");
 }
 
 function escapePdfString(value: string): string {
@@ -60,83 +60,8 @@ function wrapText(text: string, maxLength: number): string[] {
   return lines.length ? lines : [" "];
 }
 
-function pushWrappedLine(lines: PdfLine[], text: string, options: PdfLineOptions = {}, maxLength = 92) {
-  wrapText(text, maxLength).forEach((line, index) => {
-    lines.push({
-      ...options,
-      text: line,
-      gapBefore: index === 0 ? options.gapBefore : 0
-    });
-  });
-}
-
-function buildLines(fiche: FicheRecord): PdfLine[] {
-  const lines: PdfLine[] = [];
-
-  pushWrappedLine(lines, "Fiche pedagogique", { size: 18, bold: true }, 60);
-  pushWrappedLine(lines, fiche.titre, { size: 12, gapBefore: 8 }, 76);
-
-  lines.push({ text: "Informations generales", size: 12, bold: true, gapBefore: 16 });
-  HEADER_FIELDS.forEach((field) => {
-    pushWrappedLine(lines, `${field.label} : ${valueToText(readField(fiche.contenu_json, field.key))}`, {
-      size: 10
-    });
-  });
-
-  lines.push({ text: "Elements de planification", size: 12, bold: true, gapBefore: 14 });
-  PLANNING_FIELDS.forEach((field) => {
-    pushWrappedLine(lines, `${field.label} : ${valueToText(readField(fiche.contenu_json, field.key))}`, {
-      size: 10
-    });
-  });
-
-  lines.push({ text: "Grand tableau pedagogique", size: 12, bold: true, gapBefore: 14 });
-  normaliseDeroulement(fiche.contenu_json).forEach((row, index) => {
-    lines.push({ text: `Etape ${index + 1}`, size: 11, bold: true, gapBefore: index === 0 ? 4 : 10 });
-    DEROULEMENT_COLUMNS.forEach((column) => {
-      pushWrappedLine(lines, `${column.label} : ${row[column.key]}`, { size: 9, indent: 12 }, 86);
-    });
-  });
-
-  const extras = getExtraSections(fiche.contenu_json);
-  if (extras.length) {
-    lines.push({ text: "Autres informations", size: 12, bold: true, gapBefore: 14 });
-    extras.forEach((section) => {
-      pushWrappedLine(lines, `${section.label} : ${valueToText(section.value)}`, { size: 10 }, 88);
-    });
-  }
-
-  return lines;
-}
-
-function paginate(lines: PdfLine[]): string[] {
-  const pages: string[] = [];
-  const commands: string[] = [];
-  let y = 800;
-
-  function flushPage() {
-    if (commands.length) {
-      pages.push(commands.join("\n"));
-      commands.length = 0;
-    }
-    y = 800;
-  }
-
-  lines.forEach((line) => {
-    const size = line.size ?? 10;
-    y -= line.gapBefore ?? 0;
-    if (y < 52) {
-      flushPage();
-    }
-
-    const font = line.bold ? "F2" : "F1";
-    const x = 50 + (line.indent ?? 0);
-    commands.push(`BT /${font} ${size} Tf ${x} ${y} Td (${escapePdfString(line.text)}) Tj ET`);
-    y -= size + 6;
-  });
-
-  flushPage();
-  return pages.length ? pages : ["BT /F1 10 Tf 50 800 Td (Fiche pedagogique) Tj ET"];
+function estimateLines(cell: PdfCell, width: number): string[] {
+  return wrapText(cell.text, Math.max(10, Math.floor(width / 4.4)));
 }
 
 function createPdf(pageStreams: string[]): Buffer {
@@ -154,7 +79,7 @@ function createPdf(pageStreams: string[]): Buffer {
 
     const pageObjectNumber = objects.length + 1;
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`
     );
     kids.push(`${pageObjectNumber} 0 R`);
   });
@@ -181,6 +106,119 @@ function createPdf(pageStreams: string[]): Buffer {
   return Buffer.from(chunks.join(""), "latin1");
 }
 
+function renderFiche(fiche: FicheRecord): string[] {
+  const pages: string[] = [];
+  let commands: string[] = [];
+  let y = PAGE_HEIGHT - MARGIN;
+
+  function flushPage() {
+    if (commands.length > 0) {
+      pages.push(commands.join("\n"));
+    }
+    commands = [];
+    y = PAGE_HEIGHT - MARGIN;
+  }
+
+  function ensureSpace(height: number) {
+    if (y - height < MARGIN) {
+      flushPage();
+    }
+  }
+
+  function addText(text: string, x: number, top: number, size = 9, bold = false, maxLength = 95) {
+    const font = bold ? "F2" : "F1";
+    wrapText(text, maxLength).slice(0, 12).forEach((line, index) => {
+      commands.push(`BT /${font} ${size} Tf ${x} ${top - index * (size + 3)} Td (${escapePdfString(line)}) Tj ET`);
+    });
+  }
+
+  function addTitle(text: string, size: number, gap = 10) {
+    ensureSpace(size + gap + 8);
+    commands.push(`BT /F2 ${size} Tf ${MARGIN} ${y} Td (${escapePdfString(text)}) Tj ET`);
+    y -= size + gap;
+  }
+
+  function drawCell(x: number, top: number, width: number, height: number, cell: PdfCell, size = 8) {
+    if (cell.fill) {
+      commands.push(`q 0.94 0.88 0.78 rg ${x} ${top - height} ${width} ${height} re f Q`);
+    }
+    commands.push(`${x} ${top - height} ${width} ${height} re S`);
+    const lines = estimateLines(cell, width - 8).slice(0, Math.max(1, Math.floor((height - 8) / (size + 3))));
+    const font = cell.bold ? "F2" : "F1";
+    lines.forEach((line, index) => {
+      commands.push(`BT /${font} ${size} Tf ${x + 4} ${top - 12 - index * (size + 3)} Td (${escapePdfString(line)}) Tj ET`);
+    });
+  }
+
+  function addTable(rows: PdfCell[][], widths: number[], size = 8) {
+    rows.forEach((row) => {
+      const lineCounts = row.map((cell, index) => estimateLines(cell, widths[index] - 8).length);
+      const height = Math.max(24, Math.min(98, Math.max(...lineCounts) * (size + 3) + 12));
+      ensureSpace(height + 4);
+      let x = MARGIN;
+      row.forEach((cell, index) => {
+        drawCell(x, y, widths[index], height, cell, size);
+        x += widths[index];
+      });
+      y -= height;
+    });
+    y -= 14;
+  }
+
+  commands.push("0.13 0.11 0.08 RG 0.6 w");
+  addText("CANEVAS PEDAGOGIQUE", 224, y, 8, true, 40);
+  y -= 18;
+  addText(`Fiche de ${valueToText(readField(fiche.contenu_json, "fiche_de")) || fiche.matiere}`, 190, y, 16, true, 50);
+  y -= 18;
+  commands.push(`${MARGIN} ${y} m ${MARGIN + CONTENT_WIDTH} ${y} l S`);
+  y -= 14;
+
+  const identificationRows = [0, 4].map((start) =>
+    HEADER_FIELDS.slice(start, start + 4).map((field) => ({
+      text: `${field.label.toUpperCase()}\n${valueToText(readField(fiche.contenu_json, field.key))}`
+    }))
+  );
+  addTable(identificationRows, [CONTENT_WIDTH / 4, CONTENT_WIDTH / 4, CONTENT_WIDTH / 4, CONTENT_WIDTH / 4], 8);
+
+  addTitle("Elements de planification", 11, 8);
+  addTable(
+    PLANNING_FIELDS.map((field) => [
+      { text: field.label, bold: true, fill: true },
+      { text: valueToText(readField(fiche.contenu_json, field.key)) }
+    ]),
+    [168, CONTENT_WIDTH - 168],
+    8
+  );
+
+  addTitle("Grand tableau pedagogique", 11, 8);
+  addTable(
+    [
+      DEROULEMENT_COLUMNS.map((column) => ({ text: column.label, bold: true, fill: true })),
+      ...normaliseDeroulement(fiche.contenu_json).map((row) =>
+        DEROULEMENT_COLUMNS.map((column) => ({ text: row[column.key] }))
+      )
+    ],
+    [70, 42, 86, 86, 80, 92, 67],
+    7
+  );
+
+  const extras = getExtraSections(fiche.contenu_json);
+  if (extras.length > 0) {
+    addTitle("Informations complementaires", 11, 8);
+    addTable(
+      extras.map((section) => [
+        { text: section.label, bold: true, fill: true },
+        { text: valueToText(section.value) }
+      ]),
+      [168, CONTENT_WIDTH - 168],
+      8
+    );
+  }
+
+  flushPage();
+  return pages;
+}
+
 export async function buildFichePdf(fiche: FicheRecord): Promise<Buffer> {
-  return createPdf(paginate(buildLines(fiche)));
+  return createPdf(renderFiche(fiche));
 }

@@ -14,6 +14,7 @@ import {
   DEROULEMENT_COLUMNS,
   HEADER_FIELDS,
   PLANNING_FIELDS,
+  getExtraSections,
   normaliseDeroulement,
   readField,
   valueToText
@@ -26,6 +27,12 @@ function paragraph(text: string, bold = false): Paragraph {
   });
 }
 
+function labeledCell(label: string, value: string): TableCell {
+  return new TableCell({
+    children: [paragraph(label.toUpperCase(), true), paragraph(value)]
+  });
+}
+
 function cell(text: string, bold = false): TableCell {
   return new TableCell({
     children: [paragraph(text, bold)]
@@ -33,29 +40,21 @@ function cell(text: string, bold = false): TableCell {
 }
 
 export async function buildFicheWord(fiche: FicheRecord): Promise<Buffer> {
-  const metaRows: TableRow[] = [];
-  for (let index = 0; index < HEADER_FIELDS.length; index += 2) {
-    const first = HEADER_FIELDS[index];
-    const second = HEADER_FIELDS[index + 1];
-    metaRows.push(
+  const contenu = fiche.contenu_json;
+
+  const identificationRows = [0, 4].map(
+    (start) =>
       new TableRow({
-        children: [
-          cell(first.label, true),
-          cell(valueToText(readField(fiche.contenu_json, first.key))),
-          cell(second?.label ?? "", true),
-          cell(second ? valueToText(readField(fiche.contenu_json, second.key)) : "")
-        ]
+        children: HEADER_FIELDS.slice(start, start + 4).map((field) =>
+          labeledCell(field.label, valueToText(readField(contenu, field.key)))
+        )
       })
-    );
-  }
+  );
 
   const planningRows = PLANNING_FIELDS.map(
     (field) =>
       new TableRow({
-        children: [
-          cell(field.label, true),
-          cell(valueToText(readField(fiche.contenu_json, field.key)))
-        ]
+        children: [cell(field.label, true), cell(valueToText(readField(contenu, field.key)))]
       })
   );
 
@@ -63,7 +62,7 @@ export async function buildFicheWord(fiche: FicheRecord): Promise<Buffer> {
     new TableRow({
       children: DEROULEMENT_COLUMNS.map((column) => cell(column.label, true))
     }),
-    ...normaliseDeroulement(fiche.contenu_json).map(
+    ...normaliseDeroulement(contenu).map(
       (row) =>
         new TableRow({
           children: DEROULEMENT_COLUMNS.map((column) => cell(row[column.key]))
@@ -71,44 +70,64 @@ export async function buildFicheWord(fiche: FicheRecord): Promise<Buffer> {
     )
   ];
 
+  const extraRows = getExtraSections(contenu).map(
+    (section) => new TableRow({ children: [cell(section.label, true), cell(valueToText(section.value))] })
+  );
+
+  const children = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: "CANEVAS PÉDAGOGIQUE", bold: true, size: 18 })]
+    }),
+    new Paragraph({
+      heading: HeadingLevel.TITLE,
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: `Fiche de ${valueToText(readField(contenu, "fiche_de")) || fiche.matiere}` })]
+    }),
+    new Paragraph({ children: [] }),
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: identificationRows
+    }),
+    new Paragraph({ children: [] }),
+    new Paragraph({
+      heading: HeadingLevel.HEADING_2,
+      children: [new TextRun({ text: "Éléments de planification" })]
+    }),
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: planningRows
+    }),
+    new Paragraph({ children: [] }),
+    new Paragraph({
+      heading: HeadingLevel.HEADING_2,
+      children: [new TextRun({ text: "Grand tableau pédagogique" })]
+    }),
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: deroulementRows
+    })
+  ];
+
+  if (extraRows.length > 0) {
+    children.push(
+      new Paragraph({ children: [] }),
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        children: [new TextRun({ text: "Informations complémentaires" })]
+      }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: extraRows
+      })
+    );
+  }
+
   const doc = new Document({
     sections: [
       {
         properties: {},
-        children: [
-          new Paragraph({
-            heading: HeadingLevel.TITLE,
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: "Fiche pédagogique" })]
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: fiche.titre })]
-          }),
-          new Paragraph({ children: [] }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: metaRows
-          }),
-          new Paragraph({ children: [] }),
-          new Paragraph({
-            heading: HeadingLevel.HEADING_2,
-            children: [new TextRun({ text: "Éléments de planification" })]
-          }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: planningRows
-          }),
-          new Paragraph({ children: [] }),
-          new Paragraph({
-            heading: HeadingLevel.HEADING_2,
-            children: [new TextRun({ text: "Grand tableau pédagogique" })]
-          }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: deroulementRows
-          })
-        ]
+        children
       }
     ]
   });

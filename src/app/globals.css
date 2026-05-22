@@ -43,8 +43,59 @@ textarea {
 .feuille-pedagogique {
   background: var(--papier);
   color: #181713;
-  border: 1px solid var(--ligne);
+  border: 1px solid #d3b98d;
   box-shadow: 0 22px 70px rgba(45, 35, 23, 0.15);
+}
+
+.canevas-scroll {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.fiche-a4 {
+  width: min(100%, 210mm);
+  min-width: 980px;
+  margin: 0 auto;
+  padding: 8mm;
+  font-family: "Arial Narrow", Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.entete-fiche {
+  border-bottom: 2px solid #1f1b16;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  text-align: center;
+}
+
+.entete-fiche p {
+  color: #7b4f25;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.entete-fiche h1 {
+  color: #11100e;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.1;
+  margin: 6px 0 0;
+}
+
+.bloc-canevas {
+  margin-top: 18px;
+}
+
+.bloc-canevas h2 {
+  color: #11100e;
+  font-size: 15px;
+  font-weight: 900;
+  margin: 0 0 8px;
 }
 
 .table-canevas {
@@ -55,8 +106,8 @@ textarea {
 
 .table-canevas th,
 .table-canevas td {
-  border: 1px solid #3c3126;
-  padding: 8px 9px;
+  border: 1px solid #211b14;
+  padding: 7px 8px;
   vertical-align: top;
 }
 
@@ -65,9 +116,69 @@ textarea {
   font-weight: 700;
 }
 
+.table-identification td {
+  height: 48px;
+  width: 25%;
+}
+
+.table-planification th,
+.table-complements th {
+  width: 32%;
+  text-align: left;
+}
+
+.table-deroulement th,
+.table-deroulement td {
+  font-size: 11px;
+}
+
+.table-deroulement th:nth-child(1),
+.table-deroulement td:nth-child(1) {
+  width: 14%;
+}
+
+.table-deroulement th:nth-child(2),
+.table-deroulement td:nth-child(2) {
+  width: 8%;
+}
+
+.table-deroulement th:nth-child(3),
+.table-deroulement td:nth-child(3),
+.table-deroulement th:nth-child(4),
+.table-deroulement td:nth-child(4) {
+  width: 16%;
+}
+
+.table-deroulement th:nth-child(5),
+.table-deroulement td:nth-child(5),
+.table-deroulement th:nth-child(6),
+.table-deroulement td:nth-child(6) {
+  width: 15%;
+}
+
+.table-deroulement th:nth-child(7),
+.table-deroulement td:nth-child(7) {
+  width: 16%;
+}
+
+.libelle-canevas {
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
 .texte-canevas {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.cellule-vide {
+  color: #786f64;
+  font-style: italic;
+  text-align: center;
 }
 
 @layer components {
@@ -111,5 +222,15 @@ textarea {
     border: 0;
     box-shadow: none;
     width: 100%;
+  }
+
+  .canevas-scroll {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .fiche-a4 {
+    min-width: 0;
+    padding: 0;
   }
 }

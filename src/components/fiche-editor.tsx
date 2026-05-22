@@ -131,7 +131,7 @@ export function FicheEditor({
 
       {extras.length > 0 ? (
         <section className="rounded-md border border-stone-200 bg-white p-4">
-          <h2 className="mb-4 text-lg font-black text-encre">Sections supplémentaires</h2>
+          <h2 className="mb-4 text-lg font-black text-encre">Informations complémentaires</h2>
           <div className="grid gap-4">
             {extras.map((section) => (
               <label key={section.key} className="text-sm font-semibold text-stone-700">

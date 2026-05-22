@@ -120,11 +120,7 @@ export function FicheWorkspace({
                   key={item.key}
                   type="button"
                   onClick={() => setOnglet(item.key)}
-                  className={
-                    active
-                      ? "bouton-primaire"
-                      : "bouton-secondaire"
-                  }
+                  className={active ? "bouton-primaire" : "bouton-secondaire"}
                 >
                   <Icon size={16} aria-hidden="true" />
                   {item.label}
