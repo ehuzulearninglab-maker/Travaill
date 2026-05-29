@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ComponentType } from "react";
-import { Activity, Bot, ShieldCheck, UsersRound } from "lucide-react";
+import { FileText, Settings, ShieldCheck, UserRound } from "lucide-react";
 import { getCurrentUser } from "@/lib/current-user";
 import { getAdminOverview, listImportActivities } from "@/lib/storage";
 
@@ -44,21 +44,21 @@ export default async function AdminPage() {
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link href="/admin/utilisateurs" className="bouton-primaire">
-            <UsersRound size={16} aria-hidden="true" />
+            <UserRound size={16} aria-hidden="true" />
             Utilisateurs
           </Link>
           <Link href="/admin/gemini" className="bouton-secondaire">
-            <Bot size={16} aria-hidden="true" />
+            <Settings size={16} aria-hidden="true" />
             Gemini
           </Link>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Utilisateurs" value={overview.utilisateurs} icon={UsersRound} />
+        <StatCard label="Utilisateurs" value={overview.utilisateurs} icon={UserRound} />
         <StatCard label="Comptes suspendus" value={overview.suspendus} icon={ShieldCheck} />
-        <StatCard label="Fiches enregistrées" value={overview.fiches} icon={Activity} />
-        <StatCard label="Tokens Gemini suivis" value={overview.tokensTotal} icon={Bot} />
+        <StatCard label="Fiches enregistrées" value={overview.fiches} icon={FileText} />
+        <StatCard label="Tokens Gemini suivis" value={overview.tokensTotal} icon={Settings} />
       </section>
 
       <section className="rounded-md border border-stone-200 bg-white p-5 shadow-doux">

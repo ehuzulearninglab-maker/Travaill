@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ShieldCheck, UserCheck, UserMinus, UserRoundCheck } from "lucide-react";
+import { ShieldCheck, UserCheck, UserMinus, UserRound } from "lucide-react";
 import type { UserRole } from "@/lib/types";
 
 type AdminUser = {
@@ -53,7 +53,7 @@ export function AdminUsersClient({ utilisateurs, currentUserId }: { utilisateurs
     <div className="space-y-5">
       <section className="grid gap-3 md:grid-cols-3">
         <div className="rounded-md border border-stone-200 bg-white p-4 shadow-doux">
-          <UserRoundCheck className="mb-3 text-sauge" size={22} aria-hidden="true" />
+          <UserRound className="mb-3 text-sauge" size={22} aria-hidden="true" />
           <p className="text-2xl font-black text-encre">{counts.total}</p>
           <p className="text-sm font-semibold text-stone-600">Comptes inscrits</p>
         </div>

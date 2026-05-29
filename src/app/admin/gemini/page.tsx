@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Bot, CircleCheck, CircleOff } from "lucide-react";
+import { ArrowLeft, Settings, ShieldCheck } from "lucide-react";
 import { getCurrentUser } from "@/lib/current-user";
 import { getAdminOverview, listImportActivities } from "@/lib/storage";
 
@@ -37,7 +37,7 @@ export default async function AdminGeminiPage() {
               geminiActive ? "bg-ciel text-sauge" : "bg-red-50 text-red-700"
             }`}
           >
-            {geminiActive ? <CircleCheck size={17} aria-hidden="true" /> : <CircleOff size={17} aria-hidden="true" />}
+            {geminiActive ? <ShieldCheck size={17} aria-hidden="true" /> : <Settings size={17} aria-hidden="true" />}
             {geminiActive ? "Gemini actif" : "Clé absente"}
           </span>
         </div>
@@ -45,7 +45,7 @@ export default async function AdminGeminiPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         <article className="rounded-md border border-stone-200 bg-white p-5 shadow-doux">
-          <Bot className="mb-4 text-sauge" size={24} aria-hidden="true" />
+          <Settings className="mb-4 text-sauge" size={24} aria-hidden="true" />
           <p className="text-lg font-black text-encre">{model}</p>
           <p className="mt-1 text-sm font-semibold text-stone-600">Modèle configuré</p>
         </article>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, UsersRound } from "lucide-react";
+import { ArrowLeft, UserRound } from "lucide-react";
 import { AdminUsersClient } from "@/components/admin-users-client";
 import { getCurrentUser } from "@/lib/current-user";
 import { listUsersForAdmin } from "@/lib/storage";
@@ -25,7 +25,7 @@ export default async function AdminUtilisateursPage() {
         </Link>
         <div className="flex items-start gap-4">
           <span className="flex h-12 w-12 items-center justify-center rounded-md bg-sauge text-white">
-            <UsersRound size={24} aria-hidden="true" />
+            <UserRound size={24} aria-hidden="true" />
           </span>
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-brun">Accès</p>
