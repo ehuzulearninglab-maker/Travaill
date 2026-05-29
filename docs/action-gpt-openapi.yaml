@@ -18,11 +18,14 @@ paths:
             schema:
               type: object
               required:
-                - fiche_de
+                - texte_integral
               properties:
                 utilisateur_email:
                   type: string
                   description: Adresse de l’enseignant destinataire, si disponible.
+                texte_integral:
+                  type: string
+                  description: Texte complet de la fiche validée, copié fidèlement depuis la réponse finale du GPT.
                 fiche_de:
                   type: string
                 dossier_ou_unite:
@@ -47,6 +50,8 @@ paths:
                   type: string
                 competences_transversales:
                   type: string
+                competences_transdisciplinaires:
+                  type: string
                 connaissances_et_techniques:
                   type: string
                 strategie_objet_apprentissage:
@@ -57,27 +62,24 @@ paths:
                   type: string
                 deroulement:
                   type: array
+                  description: Lignes textuelles du déroulement. Chaque ligne doit conserver les titres, sous-titres, consignes et résultats attendus de la fiche.
                   items:
                     type: object
                     properties:
-                      etape:
-                        type: string
-                      duree:
-                        type: string
-                      activites_enseignant:
-                        type: string
-                      activites_apprenants:
-                        type: string
                       consignes:
                         type: string
+                        description: Texte exact de la colonne Consignes pour cette ligne.
                       resultats_attendus:
                         type: string
-                      evaluation:
-                        type: string
+                        description: Texte exact de la colonne Résultats attendus pour cette ligne.
                     additionalProperties: true
                 consignes:
                   type: string
                 resultats_attendus:
+                  type: string
+                je_retiens:
+                  type: string
+                variante_pedagogique_possible:
                   type: string
               additionalProperties: true
       responses:
@@ -93,6 +95,11 @@ paths:
                   message:
                     type: string
                   fiche_id:
+                    type: string
+                  mise_en_forme:
+                    type: string
+                    description: gemini si la mise en forme Gemini a réussi, local sinon.
+                  avertissement:
                     type: string
 components:
   schemas: {}

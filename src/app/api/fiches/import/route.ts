@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatImportedFiche } from "@/lib/gemini-formatter";
 import { getUserByEmail, importFiche } from "@/lib/storage";
 import type { FicheContenu } from "@/lib/types";
 
@@ -66,11 +67,14 @@ export async function POST(request: Request) {
   }
 
   const targetUser = body.utilisateur_email ? await getUserByEmail(body.utilisateur_email) : undefined;
-  const fiche = await importFiche(fichePayload, targetUser?.id);
+  const formatted = await formatImportedFiche(fichePayload);
+  const fiche = await importFiche(formatted.contenu, targetUser?.id);
 
   return NextResponse.json({
     succes: true,
     message: "Fiche reçue et enregistrée.",
-    fiche_id: fiche.id
+    fiche_id: fiche.id,
+    mise_en_forme: formatted.source,
+    avertissement: formatted.avertissement
   });
 }

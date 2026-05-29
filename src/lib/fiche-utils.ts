@@ -152,6 +152,13 @@ const ROW_ALIASES: Record<keyof DeroulementRow, string[]> = {
   evaluation: ["evaluation", "évaluation", "critères", "criteres", "controle", "contrôle"]
 };
 
+const EXTRA_FIELD_LABELS: Record<string, string> = {
+  competences_transdisciplinaires: "Compétences transdisciplinaires",
+  je_retiens: "Je retiens",
+  variante_pedagogique_possible: "Variante pédagogique possible",
+  sections_supplementaires: "Sections supplémentaires"
+};
+
 export const HEADER_FIELDS: FieldDefinition[] = [
   { key: "fiche_de", label: "Fiche de" },
   { key: "dossier_ou_unite", label: "Dossier ou unité" },
@@ -298,6 +305,10 @@ export function valueToText(value: JsonValue | undefined): string {
 }
 
 export function formatLabel(key: string): string {
+  if (EXTRA_FIELD_LABELS[key]) {
+    return EXTRA_FIELD_LABELS[key];
+  }
+
   const known = [...HEADER_FIELDS, ...PLANNING_FIELDS, ...DEROULEMENT_COLUMNS].find(
     (field) => field.key === key
   );
@@ -534,7 +545,19 @@ function consumedSlugs(): Set<string> {
     aliasesFor(field.key).forEach((key) => consumed.add(slugKey(key)));
   });
   aliasesFor("deroulement").forEach((key) => consumed.add(slugKey(key)));
-  ["titre", "matiere", "classe", "utilisateur_email", "secret_key"].forEach((key) => consumed.add(slugKey(key)));
+  [
+    "titre",
+    "matiere",
+    "classe",
+    "utilisateur_email",
+    "secret_key",
+    "texte_integral",
+    "texte_original",
+    "texte_de_la_fiche",
+    "fiche_texte",
+    "fiche_complete",
+    "contenu_texte"
+  ].forEach((key) => consumed.add(slugKey(key)));
   NESTED_SECTION_ALIASES.forEach((key) => consumed.add(slugKey(key)));
   return consumed;
 }
