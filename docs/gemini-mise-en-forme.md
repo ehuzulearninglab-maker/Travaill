@@ -21,3 +21,5 @@ GEMINI_MODEL=gemini-2.5-flash-lite
 4. Si Gemini échoue, l'application sauvegarde quand même la fiche avec la normalisation locale.
 
 La clé Gemini ne doit jamais être mise dans le schéma ActionsGPT ni dans le navigateur.
+
+Le suivi visible dans `/admin/gemini` affiche le modèle, la source utilisée (`gemini` ou `local`) et les tokens retournés par l'API Gemini. Si la clé est absente ou si Gemini échoue, l'application garde un import local et indique l'avertissement dans le journal.

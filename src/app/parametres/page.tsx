@@ -34,6 +34,12 @@ export default async function ParametresPage() {
               <dt className="font-bold text-stone-700">Courriel</dt>
               <dd className="text-stone-600">{user.email}</dd>
             </div>
+            <div>
+              <dt className="font-bold text-stone-700">Rôle</dt>
+              <dd className="text-stone-600">
+                {user.role === "admin" ? "Administrateur" : user.role === "suspendu" ? "Suspendu" : "Enseignant"}
+              </dd>
+            </div>
           </dl>
           <div className="mt-5">
             <LogoutButton />

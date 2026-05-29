@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { BookOpenCheck, Clock3, LayoutDashboard, Settings } from "lucide-react";
+import { BookOpenCheck, Clock3, LayoutDashboard, Settings, ShieldCheck } from "lucide-react";
+import { getCurrentUser } from "@/lib/current-user";
 
 const navItems = [
   { href: "/tableau-de-bord", label: "Tableau de bord", icon: LayoutDashboard },
@@ -7,10 +8,14 @@ const navItems = [
   { href: "/parametres", label: "Paramètres", icon: Settings }
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export async function AppShell({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser();
+  const visibleNavItems =
+    user?.role === "admin" ? [...navItems, { href: "/admin", label: "Admin", icon: ShieldCheck }] : navItems;
+
   return (
     <div className="min-h-screen">
-      <header className="no-print border-b border-stone-200/80 bg-white/80 backdrop-blur">
+      <header className="no-print sticky top-0 z-30 border-b border-stone-200/80 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <Link href="/tableau-de-bord" className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-md bg-sauge text-white">
@@ -23,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
 
           <nav className="flex flex-wrap items-center gap-2">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Link

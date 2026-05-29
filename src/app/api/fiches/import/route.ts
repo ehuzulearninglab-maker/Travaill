@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { formatImportedFiche } from "@/lib/gemini-formatter";
-import { getUserByEmail, importFiche } from "@/lib/storage";
+import { DEFAULT_USER_ID, getUserByEmail, importFiche, recordImportActivity } from "@/lib/storage";
 import type { FicheContenu } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -67,14 +67,33 @@ export async function POST(request: Request) {
   }
 
   const targetUser = body.utilisateur_email ? await getUserByEmail(body.utilisateur_email) : undefined;
+  if (targetUser?.role === "suspendu") {
+    return NextResponse.json({ succes: false, message: "Compte destinataire suspendu." }, { status: 403 });
+  }
+
   const formatted = await formatImportedFiche(fichePayload);
-  const fiche = await importFiche(formatted.contenu, targetUser?.id);
+  const userId = targetUser?.id ?? DEFAULT_USER_ID;
+  const fiche = await importFiche(formatted.contenu, userId);
+
+  await recordImportActivity({
+    utilisateur_id: userId,
+    fiche_id: fiche.id,
+    source: formatted.source,
+    statut: "succes",
+    message: formatted.avertissement,
+    modele: formatted.modele,
+    tokens_entree: formatted.tokens_entree,
+    tokens_sortie: formatted.tokens_sortie,
+    tokens_total: formatted.tokens_total
+  });
 
   return NextResponse.json({
     succes: true,
     message: "Fiche reçue et enregistrée.",
     fiche_id: fiche.id,
     mise_en_forme: formatted.source,
+    modele: formatted.modele,
+    tokens_total: formatted.tokens_total,
     avertissement: formatted.avertissement
   });
 }

@@ -8,6 +8,8 @@ export type JsonValue =
 
 export type FicheContenu = Record<string, JsonValue>;
 
+export type UserRole = "admin" | "enseignant" | "suspendu";
+
 export type FicheRecord = {
   id: string;
   utilisateur_id: string;
@@ -32,13 +34,29 @@ export type UserRecord = {
   nom: string;
   email: string;
   mot_de_passe: string;
+  role: UserRole;
   date_creation: string;
+};
+
+export type ImportActivityRecord = {
+  id: string;
+  utilisateur_id: string;
+  fiche_id?: string;
+  source: "gemini" | "local";
+  statut: "succes" | "erreur";
+  message?: string;
+  modele?: string;
+  tokens_entree: number;
+  tokens_sortie: number;
+  tokens_total: number;
+  date: string;
 };
 
 export type DatabaseShape = {
   utilisateurs: UserRecord[];
   fiches: FicheRecord[];
   historique: HistoriqueRecord[];
+  import_activites: ImportActivityRecord[];
 };
 
 export type DeroulementRow = {

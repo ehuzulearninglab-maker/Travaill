@@ -15,3 +15,11 @@ export async function requireCurrentUser(): Promise<UserRecord> {
   }
   return user;
 }
+
+export async function requireAdminUser(): Promise<UserRecord> {
+  const user = await requireCurrentUser();
+  if (user.role !== "admin") {
+    throw new Error("AccÃ¨s administrateur requis.");
+  }
+  return user;
+}

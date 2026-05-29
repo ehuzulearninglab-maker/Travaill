@@ -35,7 +35,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
 
 export async function verifyCredentials(email: string, password: string): Promise<UserRecord | undefined> {
   const user = await getUserByEmail(email);
-  if (!user) {
+  if (!user || user.role === "suspendu") {
     return undefined;
   }
 
@@ -89,7 +89,8 @@ export async function userFromToken(token: string | undefined): Promise<UserReco
     return undefined;
   }
 
-  return getUserById(session.userId);
+  const user = await getUserById(session.userId);
+  return user?.role === "suspendu" ? undefined : user;
 }
 
 export const sessionMaxAge = SESSION_MAX_AGE_SECONDS;

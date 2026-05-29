@@ -11,6 +11,11 @@ type GeminiResponse = {
       parts?: GeminiPart[];
     };
   }>;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+  };
   error?: {
     message?: string;
   };
@@ -19,6 +24,10 @@ type GeminiResponse = {
 type FormattedImport = {
   contenu: FicheContenu;
   source: "gemini" | "local";
+  modele: string;
+  tokens_entree: number;
+  tokens_sortie: number;
+  tokens_total: number;
   avertissement?: string;
 };
 
@@ -166,7 +175,12 @@ Fiche recue :
 ${JSON.stringify(content, null, 2)}`;
 }
 
-async function callGemini(content: FicheContenu, apiKey: string): Promise<FicheContenu> {
+async function callGemini(content: FicheContenu, apiKey: string): Promise<{
+  contenu: FicheContenu;
+  tokens_entree: number;
+  tokens_sortie: number;
+  tokens_total: number;
+}> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
 
@@ -211,7 +225,12 @@ async function callGemini(content: FicheContenu, apiKey: string): Promise<FicheC
     throw new Error("La reponse Gemini n'est pas un objet JSON.");
   }
 
-  return parsed as FicheContenu;
+  return {
+    contenu: parsed as FicheContenu,
+    tokens_entree: data.usageMetadata?.promptTokenCount ?? 0,
+    tokens_sortie: data.usageMetadata?.candidatesTokenCount ?? 0,
+    tokens_total: data.usageMetadata?.totalTokenCount ?? 0
+  };
 }
 
 export async function formatImportedFiche(content: FicheContenu): Promise<FormattedImport> {
@@ -222,6 +241,10 @@ export async function formatImportedFiche(content: FicheContenu): Promise<Format
     return {
       contenu: local,
       source: "local",
+      modele: GEMINI_MODEL,
+      tokens_entree: 0,
+      tokens_sortie: 0,
+      tokens_total: 0,
       avertissement: "GEMINI_API_KEY absente : mise en forme locale utilisee."
     };
   }
@@ -229,13 +252,21 @@ export async function formatImportedFiche(content: FicheContenu): Promise<Format
   try {
     const gemini = await callGemini(local, apiKey);
     return {
-      contenu: normalizeImportedFiche(mergeContent(local, gemini)),
-      source: "gemini"
+      contenu: normalizeImportedFiche(mergeContent(local, gemini.contenu)),
+      source: "gemini",
+      modele: GEMINI_MODEL,
+      tokens_entree: gemini.tokens_entree,
+      tokens_sortie: gemini.tokens_sortie,
+      tokens_total: gemini.tokens_total
     };
   } catch (error) {
     return {
       contenu: local,
       source: "local",
+      modele: GEMINI_MODEL,
+      tokens_entree: 0,
+      tokens_sortie: 0,
+      tokens_total: 0,
       avertissement: error instanceof Error ? error.message : "Mise en forme Gemini indisponible."
     };
   }

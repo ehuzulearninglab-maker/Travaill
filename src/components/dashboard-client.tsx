@@ -69,7 +69,7 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
 
   return (
     <div className="space-y-6">
-      <section className="rounded-md border border-stone-200 bg-white p-5 shadow-doux">
+      <section className="surface-premium p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-brun">Espace enseignant</p>
@@ -85,7 +85,7 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
         </div>
       </section>
 
-      <section className="rounded-md border border-stone-200 bg-white p-4 shadow-doux">
+      <section className="surface-premium p-4">
         <div className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
           <label className="relative block">
             <span className="sr-only">Rechercher</span>
@@ -116,7 +116,7 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((fiche) => (
-          <article key={fiche.id} className="rounded-md border border-stone-200 bg-white p-4 shadow-doux">
+          <article key={fiche.id} className="carte-fiche">
             <div className="mb-4 flex items-start justify-between gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-ciel text-sauge">
                 <FileText size={19} aria-hidden="true" />
