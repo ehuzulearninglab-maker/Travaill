@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { createEmptyFiche, inferFicheMeta } from "@/lib/fiche-utils";
 import type {
+  AppSettingsRecord,
   DatabaseShape,
   FicheContenu,
   FicheRecord,
@@ -20,6 +21,8 @@ const DEMO_PASSWORD_HASH =
   "demo-sel-ehuzu-2026:9affe4211a76528b1592af0df028a06056b06f6e97bebbcec2d73a867fe8c56fcb55290a2e77e7d3c8b3ebe759827de7126e6362bbd5c9b1343a9b9d91718bf9";
 
 const DEFAULT_ADMIN_EMAILS = ["enseignant@ehuzu.test"];
+export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
+const APP_SETTINGS_ID = "global";
 
 type PgPool = import("pg").Pool;
 type PgRow = Record<string, unknown>;
@@ -35,7 +38,18 @@ function nowIso(): string {
 }
 
 function usePostgres(): boolean {
-  return Boolean(process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SUPABASE_DB_URL);
+  return Boolean(databaseConnectionString());
+}
+
+function databaseConnectionString(): string | undefined {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.SUPABASE_DB_URL ||
+    process.env.SUPABASE_POSTGRES_URL
+  );
 }
 
 async function getPool(): Promise<PgPool> {
@@ -45,7 +59,7 @@ async function getPool(): Promise<PgPool> {
 
   const { Pool } = await import("pg");
   globalForPg.fichesPool = new Pool({
-    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SUPABASE_DB_URL,
+    connectionString: databaseConnectionString(),
     ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
   });
   return globalForPg.fichesPool;
@@ -128,6 +142,34 @@ function toImportActivity(row: PgRow): ImportActivityRecord {
     tokens_total: Number(row.tokens_total ?? 0),
     date: asIso(row.date)
   };
+}
+
+function normalizeGeminiModel(value: unknown): string {
+  const model = typeof value === "string" ? value.trim() : "";
+  return model || process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+}
+
+function toAppSettings(row?: PgRow): AppSettingsRecord {
+  return {
+    gemini_api_key: row?.gemini_api_key ? String(row.gemini_api_key) : undefined,
+    gemini_model: normalizeGeminiModel(row?.gemini_model),
+    date_modification: row?.date_modification ? asIso(row.date_modification) : undefined
+  };
+}
+
+function initialAppSettings(): AppSettingsRecord {
+  return {
+    gemini_model: normalizeGeminiModel(process.env.GEMINI_MODEL),
+    date_modification: nowIso()
+  };
+}
+
+function maskSecret(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const visible = value.slice(-4);
+  return `**** ${visible}`;
 }
 
 function sampleFiche(): FicheContenu {
@@ -222,7 +264,8 @@ function initialDatabase(): DatabaseShape {
         date
       }
     ],
-    import_activites: []
+    import_activites: [],
+    parametres_app: initialAppSettings()
   };
 }
 
@@ -250,6 +293,20 @@ async function ensurePostgresSeed(): Promise<void> {
   `);
   await pool.query("create index if not exists import_activites_date_idx on import_activites (date desc)");
   await pool.query("create index if not exists import_activites_user_date_idx on import_activites (utilisateur_id, date desc)");
+  await pool.query(`
+    create table if not exists parametres_app (
+      id text primary key,
+      gemini_api_key text,
+      gemini_model text not null default 'gemini-2.5-flash-lite',
+      date_modification timestamptz not null default now()
+    )
+  `);
+  await pool.query(
+    `insert into parametres_app (id, gemini_model, date_modification)
+     values ($1, $2, now())
+     on conflict (id) do nothing`,
+    [APP_SETTINGS_ID, normalizeGeminiModel(process.env.GEMINI_MODEL)]
+  );
 
   const db = initialDatabase();
   const user = db.utilisateurs[0];
@@ -325,7 +382,12 @@ function normalizeDatabase(db: Partial<DatabaseShape>): DatabaseShape {
     })) as UserRecord[],
     fiches: db.fiches ?? [],
     historique: db.historique ?? [],
-    import_activites: db.import_activites ?? []
+    import_activites: db.import_activites ?? [],
+    parametres_app: {
+      ...initialAppSettings(),
+      ...(db.parametres_app ?? {}),
+      gemini_model: normalizeGeminiModel(db.parametres_app?.gemini_model)
+    }
   };
 }
 
@@ -629,6 +691,95 @@ export async function updateUserRole(id: string, role: UserRole): Promise<UserRe
   db.utilisateurs[index] = { ...db.utilisateurs[index], role };
   await writeDatabase(db);
   return db.utilisateurs[index];
+}
+
+export async function getGeminiSettings(): Promise<AppSettingsRecord> {
+  if (usePostgres()) {
+    await ensurePostgresSeed();
+    const pool = await getPool();
+    const result = await pool.query("select * from parametres_app where id = $1 limit 1", [APP_SETTINGS_ID]);
+    return toAppSettings(result.rows[0]);
+  }
+
+  const db = await readDatabase();
+  return db.parametres_app;
+}
+
+export async function updateGeminiSettings(input: {
+  gemini_api_key?: string;
+  gemini_model?: string;
+  effacer_cle?: boolean;
+}): Promise<AppSettingsRecord> {
+  const current = await getGeminiSettings();
+  const next: AppSettingsRecord = {
+    gemini_api_key: input.effacer_cle
+      ? undefined
+      : input.gemini_api_key !== undefined
+        ? input.gemini_api_key.trim() || undefined
+        : current.gemini_api_key,
+    gemini_model: normalizeGeminiModel(input.gemini_model ?? current.gemini_model),
+    date_modification: nowIso()
+  };
+
+  if (usePostgres()) {
+    await ensurePostgresSeed();
+    const pool = await getPool();
+    const result = await pool.query(
+      `insert into parametres_app (id, gemini_api_key, gemini_model, date_modification)
+       values ($1, $2, $3, $4)
+       on conflict (id) do update
+       set gemini_api_key = excluded.gemini_api_key,
+           gemini_model = excluded.gemini_model,
+           date_modification = excluded.date_modification
+       returning *`,
+      [APP_SETTINGS_ID, next.gemini_api_key ?? null, next.gemini_model, next.date_modification]
+    );
+    return toAppSettings(result.rows[0]);
+  }
+
+  const db = await readDatabase();
+  db.parametres_app = next;
+  await writeDatabase(db);
+  return next;
+}
+
+export async function getGeminiRuntimeConfig(): Promise<{
+  apiKey?: string;
+  model: string;
+  source: "admin" | "environnement" | "absent";
+}> {
+  const settings = await getGeminiSettings();
+  if (settings.gemini_api_key) {
+    return { apiKey: settings.gemini_api_key, model: settings.gemini_model, source: "admin" };
+  }
+
+  if (process.env.GEMINI_API_KEY) {
+    return {
+      apiKey: process.env.GEMINI_API_KEY,
+      model: settings.gemini_model,
+      source: "environnement"
+    };
+  }
+
+  return { model: settings.gemini_model, source: "absent" };
+}
+
+export async function getGeminiAdminStatus(): Promise<{
+  actif: boolean;
+  modele: string;
+  source: "admin" | "environnement" | "absent";
+  apercu_cle?: string;
+  date_modification?: string;
+}> {
+  const settings = await getGeminiSettings();
+  const runtime = await getGeminiRuntimeConfig();
+  return {
+    actif: Boolean(runtime.apiKey),
+    modele: runtime.model,
+    source: runtime.source,
+    apercu_cle: runtime.source === "admin" ? maskSecret(settings.gemini_api_key) : maskSecret(process.env.GEMINI_API_KEY),
+    date_modification: settings.date_modification
+  };
 }
 
 export async function recordImportActivity(input: {

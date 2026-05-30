@@ -56,11 +56,11 @@ export function FicheEditor({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-md border border-stone-200 bg-white p-4">
+      <section className="rounded-xl border border-stone-100 bg-white p-5 shadow-doux">
         <h2 className="mb-4 text-lg font-black text-encre">Informations générales</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {HEADER_FIELDS.map((field) => (
-            <label key={field.key} className="text-sm font-semibold text-stone-700">
+            <label key={field.key} className="text-sm font-semibold text-encre">
               {field.label}
               <input
                 className="champ mt-1"
@@ -72,11 +72,11 @@ export function FicheEditor({
         </div>
       </section>
 
-      <section className="rounded-md border border-stone-200 bg-white p-4">
+      <section className="rounded-xl border border-stone-100 bg-white p-5 shadow-doux">
         <h2 className="mb-4 text-lg font-black text-encre">Éléments de planification</h2>
         <div className="grid gap-4">
           {PLANNING_FIELDS.map((field) => (
-            <label key={field.key} className="text-sm font-semibold text-stone-700">
+            <label key={field.key} className="text-sm font-semibold text-encre">
               {field.label}
               <textarea
                 className="champ mt-1"
@@ -88,7 +88,7 @@ export function FicheEditor({
         </div>
       </section>
 
-      <section className="rounded-md border border-stone-200 bg-white p-4">
+      <section className="rounded-xl border border-stone-100 bg-white p-5 shadow-doux">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-black text-encre">Déroulement</h2>
           <button type="button" onClick={addRow} className="bouton-secondaire">
@@ -99,7 +99,7 @@ export function FicheEditor({
 
         <div className="space-y-4">
           {rows.map((row, index) => (
-            <div key={index} className="rounded-md border border-stone-200 bg-ivoire/50 p-3">
+            <div key={index} className="rounded-xl border border-stone-100 bg-ivoire/70 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-sm font-bold text-brun">Ligne {index + 1}</p>
                 <button type="button" onClick={() => removeRow(index)} className="bouton-danger px-3 py-1.5">
@@ -109,7 +109,7 @@ export function FicheEditor({
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {OFFICIAL_DEROULEMENT_COLUMNS.map((column) => (
-                  <label key={column.key} className="text-sm font-semibold text-stone-700">
+                  <label key={column.key} className="text-sm font-semibold text-encre">
                     {column.label}
                     <textarea
                       className="champ mt-1"
@@ -123,18 +123,18 @@ export function FicheEditor({
           ))}
 
           {rows.length === 0 ? (
-            <div className="rounded-md border border-dashed border-stone-300 bg-ivoire/50 p-5 text-center text-sm text-stone-600">
+            <div className="rounded-xl border border-dashed border-stone-100 bg-ivoire/70 p-5 text-center text-sm text-brun">
               Aucune ligne de déroulement. Ajoutez une ligne pour compléter le tableau pédagogique.
             </div>
           ) : null}
         </div>
       </section>
 
-      <section className="rounded-md border border-stone-200 bg-white p-4">
+      <section className="rounded-xl border border-stone-100 bg-white p-5 shadow-doux">
         <h2 className="mb-4 text-lg font-black text-encre">Consignes et résultats attendus</h2>
         <div className="grid gap-4">
           {FINAL_FIELDS.map((field) => (
-            <label key={field.key} className="text-sm font-semibold text-stone-700">
+            <label key={field.key} className="text-sm font-semibold text-encre">
               {field.label}
               <textarea
                 className="champ mt-1"
@@ -147,11 +147,11 @@ export function FicheEditor({
       </section>
 
       {extras.length > 0 ? (
-        <section className="rounded-md border border-stone-200 bg-white p-4">
+        <section className="rounded-xl border border-stone-100 bg-white p-5 shadow-doux">
           <h2 className="mb-4 text-lg font-black text-encre">Champs reçus non classés</h2>
           <div className="grid gap-4">
             {extras.map((section) => (
-              <label key={section.key} className="text-sm font-semibold text-stone-700">
+              <label key={section.key} className="text-sm font-semibold text-encre">
                 {section.label}
                 <textarea
                   className="champ mt-1"

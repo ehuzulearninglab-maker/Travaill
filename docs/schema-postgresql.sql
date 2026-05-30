@@ -56,3 +56,14 @@ create index if not exists import_activites_date_idx
 
 create index if not exists import_activites_user_date_idx
   on import_activites (utilisateur_id, date desc);
+
+create table if not exists parametres_app (
+  id text primary key,
+  gemini_api_key text,
+  gemini_model text not null default 'gemini-2.5-flash-lite',
+  date_modification timestamptz not null default now()
+);
+
+insert into parametres_app (id, gemini_model, date_modification)
+values ('global', 'gemini-2.5-flash-lite', now())
+on conflict (id) do nothing;

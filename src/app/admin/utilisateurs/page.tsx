@@ -30,7 +30,7 @@ export default async function AdminUtilisateursPage() {
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-brun">Accès</p>
             <h1 className="mt-2 text-3xl font-black text-encre">Gestion des utilisateurs</h1>
-            <p className="mt-2 max-w-2xl text-stone-600">
+            <p className="mt-2 max-w-2xl text-brun">
               Suspendez, réactivez ou promouvez les comptes. Les enseignants ne voient jamais cette section.
             </p>
           </div>

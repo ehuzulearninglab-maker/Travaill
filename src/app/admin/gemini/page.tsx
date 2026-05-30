@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, Settings, ShieldCheck } from "lucide-react";
+import { GeminiSettingsClient } from "@/components/gemini-settings-client";
 import { getCurrentUser } from "@/lib/current-user";
-import { getAdminOverview, listImportActivities } from "@/lib/storage";
+import { getAdminOverview, getGeminiAdminStatus, listImportActivities } from "@/lib/storage";
 
 export default async function AdminGeminiPage() {
   const user = await getCurrentUser();
@@ -13,9 +14,13 @@ export default async function AdminGeminiPage() {
     redirect("/tableau-de-bord");
   }
 
-  const [overview, activities] = await Promise.all([getAdminOverview(), listImportActivities(40)]);
-  const geminiActive = Boolean(process.env.GEMINI_API_KEY);
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+  const [overview, activities, geminiStatus] = await Promise.all([
+    getAdminOverview(),
+    listImportActivities(40),
+    getGeminiAdminStatus()
+  ]);
+  const geminiActive = geminiStatus.actif;
+  const model = geminiStatus.modele;
 
   return (
     <div className="space-y-6">
@@ -28,7 +33,7 @@ export default async function AdminGeminiPage() {
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-brun">Mise en forme IA</p>
             <h1 className="mt-2 text-3xl font-black text-encre">Suivi Gemini</h1>
-            <p className="mt-2 max-w-2xl text-stone-600">
+            <p className="mt-2 max-w-2xl text-brun">
               Vérifiez l’activation, le modèle utilisé et les tokens consommés lors de la mise en forme des fiches.
             </p>
           </div>
@@ -44,24 +49,26 @@ export default async function AdminGeminiPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <article className="rounded-md border border-stone-200 bg-white p-5 shadow-doux">
+        <article className="rounded-md border border-stone-100 bg-white p-5 shadow-doux">
           <Settings className="mb-4 text-sauge" size={24} aria-hidden="true" />
           <p className="text-lg font-black text-encre">{model}</p>
-          <p className="mt-1 text-sm font-semibold text-stone-600">Modèle configuré</p>
+          <p className="mt-1 text-sm font-semibold text-brun">Modèle configuré</p>
         </article>
-        <article className="rounded-md border border-stone-200 bg-white p-5 shadow-doux">
+        <article className="rounded-md border border-stone-100 bg-white p-5 shadow-doux">
           <p className="text-3xl font-black text-encre">{overview.importsGemini}</p>
-          <p className="mt-1 text-sm font-semibold text-stone-600">Imports traités par Gemini</p>
+          <p className="mt-1 text-sm font-semibold text-brun">Imports traités par Gemini</p>
         </article>
-        <article className="rounded-md border border-stone-200 bg-white p-5 shadow-doux">
+        <article className="rounded-md border border-stone-100 bg-white p-5 shadow-doux">
           <p className="text-3xl font-black text-encre">{overview.tokensTotal}</p>
-          <p className="mt-1 text-sm font-semibold text-stone-600">Tokens suivis</p>
+          <p className="mt-1 text-sm font-semibold text-brun">Tokens suivis</p>
         </article>
       </section>
 
-      <section className="rounded-md border border-stone-200 bg-white p-5 shadow-doux">
+      <GeminiSettingsClient initialStatus={geminiStatus} />
+
+      <section className="rounded-md border border-stone-100 bg-white p-5 shadow-doux">
         <h2 className="text-xl font-black text-encre">Historique des traitements</h2>
-        <p className="mt-1 text-sm text-stone-600">
+        <p className="mt-1 text-sm text-brun">
           La consommation est estimée à partir des tokens retournés par Gemini après chaque import.
         </p>
 
@@ -81,20 +88,20 @@ export default async function AdminGeminiPage() {
             <tbody className="divide-y divide-stone-100">
               {activities.map((activity) => (
                 <tr key={activity.id}>
-                  <td className="px-4 py-3 text-stone-600">
+                  <td className="px-4 py-3 text-brun">
                     {new Date(activity.date).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}
                   </td>
                   <td className="px-4 py-3 font-bold text-encre">{activity.source === "gemini" ? "Gemini" : "Local"}</td>
-                  <td className="px-4 py-3 text-stone-600">{activity.modele || model}</td>
-                  <td className="px-4 py-3 text-stone-600">{activity.tokens_entree}</td>
-                  <td className="px-4 py-3 text-stone-600">{activity.tokens_sortie}</td>
+                  <td className="px-4 py-3 text-brun">{activity.modele || model}</td>
+                  <td className="px-4 py-3 text-brun">{activity.tokens_entree}</td>
+                  <td className="px-4 py-3 text-brun">{activity.tokens_sortie}</td>
                   <td className="px-4 py-3 font-bold text-encre">{activity.tokens_total}</td>
-                  <td className="max-w-xs px-4 py-3 text-stone-600">{activity.message || "Traitement terminé"}</td>
+                  <td className="max-w-xs px-4 py-3 text-brun">{activity.message || "Traitement terminé"}</td>
                 </tr>
               ))}
               {activities.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-stone-600">
+                  <td colSpan={7} className="px-4 py-6 text-center text-brun">
                     Aucun traitement enregistré pour le moment.
                   </td>
                 </tr>

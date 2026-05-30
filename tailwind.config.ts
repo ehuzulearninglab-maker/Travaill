@@ -9,17 +9,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        papier: "#fffaf1",
-        ivoire: "#f8f2e7",
-        encre: "#24231f",
-        argile: "#b5674f",
-        sauge: "#62735f",
-        ciel: "#d8e6ea",
-        miel: "#c89f54",
-        brun: "#7a5a3a"
+        papier: "#FDFBF7",
+        ivoire: "#F7F3EC",
+        encre: "#1B4332",
+        argile: "#52796F",
+        sauge: "#10B981",
+        ciel: "#E8F7F1",
+        miel: "#F59E0B",
+        brun: "#52796F"
       },
       boxShadow: {
-        doux: "0 18px 50px rgba(56, 43, 29, 0.12)"
+        doux: "0 18px 45px rgba(27, 67, 50, 0.08)"
       }
     }
   },

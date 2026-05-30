@@ -85,14 +85,14 @@ export function FicheWorkspace({
 
   return (
     <div className="space-y-5">
-      <div className="no-print rounded-md border border-stone-200 bg-white p-4 shadow-doux">
+      <div className="no-print rounded-xl border border-stone-100 bg-white p-5 shadow-doux">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Link href="/tableau-de-bord" className="text-sm font-semibold text-sauge hover:underline">
               Retour au tableau de bord
             </Link>
             <h1 className="mt-2 text-2xl font-black text-encre">{fiche.titre}</h1>
-            <p className="text-sm text-stone-600">
+            <p className="text-sm text-brun">
               {fiche.matiere} · {fiche.classe}
             </p>
           </div>
@@ -133,7 +133,7 @@ export function FicheWorkspace({
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:items-center md:justify-between">
+        <div className="mt-4 flex flex-col gap-3 border-t border-stone-100 pt-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-2">
             {onglets.map((item) => {
               const Icon = item.icon;
@@ -152,7 +152,7 @@ export function FicheWorkspace({
             })}
           </div>
 
-          <p className="inline-flex items-center gap-2 text-sm font-medium text-stone-600">
+          <p className="inline-flex items-center gap-2 text-sm font-medium text-brun">
             <Save size={16} aria-hidden="true" />
             {saving ? "Sauvegarde en cours..." : savedAt ? `Sauvegardé à ${savedAt}` : "Sauvegarde automatique active"}
           </p>
@@ -165,16 +165,30 @@ export function FicheWorkspace({
         </div>
       ) : null}
 
-      {onglet === "edition" ? <FicheEditor contenu={contenu} onChange={setContenu} /> : null}
+      {onglet === "edition" ? (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,40%)_minmax(0,60%)]">
+          <div className="min-w-0">
+            <FicheEditor contenu={contenu} onChange={setContenu} />
+          </div>
+          <aside className="min-w-0 xl:sticky xl:top-28 xl:self-start">
+            <div className="mb-3 rounded-xl border border-stone-100 bg-white px-4 py-3 shadow-doux">
+              <p className="text-sm font-bold uppercase tracking-[0.14em] text-brun">Aperçu de la fiche</p>
+            </div>
+            <div className="zone-impression">
+              <FicheCanevas contenu={contenu} />
+            </div>
+          </aside>
+        </div>
+      ) : null}
 
       {onglet === "historique" ? (
-        <div className="rounded-md border border-stone-200 bg-white p-4 shadow-doux">
+        <div className="rounded-xl border border-stone-100 bg-white p-5 shadow-doux">
           <h2 className="mb-4 text-lg font-black text-encre">Versions sauvegardées</h2>
           <div className="space-y-3">
             {historyItems.map((entry) => (
-              <div key={entry.id} className="rounded-md border border-stone-200 bg-ivoire/60 p-3">
+              <div key={entry.id} className="rounded-xl border border-stone-100 bg-ivoire/70 p-4">
                 <p className="font-bold text-encre">Version {entry.version}</p>
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-brun">
                   {new Date(entry.date).toLocaleString("fr-FR", {
                     dateStyle: "medium",
                     timeStyle: "short"

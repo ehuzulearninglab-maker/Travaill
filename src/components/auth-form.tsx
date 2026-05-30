@@ -42,27 +42,27 @@ export function AuthForm({ mode }: { mode: "connexion" | "inscription" }) {
   const isRegister = mode === "inscription";
 
   return (
-    <form onSubmit={submit} className="mx-auto w-full max-w-md rounded-md border border-stone-200 bg-white p-6 shadow-doux">
+    <form onSubmit={submit} className="mx-auto w-full max-w-md rounded-xl border border-stone-100 bg-white p-7 shadow-doux">
       <div className="mb-6 flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-md bg-sauge text-white">
+        <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-sauge text-white">
           {isRegister ? <UserPlus size={20} aria-hidden="true" /> : <KeyRound size={20} aria-hidden="true" />}
         </span>
         <div>
           <h1 className="text-2xl font-bold text-encre">{isRegister ? "Créer un compte" : "Connexion"}</h1>
-          <p className="text-sm text-stone-600">
+          <p className="text-sm text-brun">
             {isRegister ? "Renseignez vos informations." : "Accédez à vos fiches pédagogiques."}
           </p>
         </div>
       </div>
 
       {isRegister ? (
-        <label className="mb-4 block text-sm font-semibold text-stone-700">
+        <label className="mb-4 block text-sm font-semibold text-encre">
           Nom
           <input className="champ mt-1" value={nom} onChange={(event) => setNom(event.target.value)} required />
         </label>
       ) : null}
 
-      <label className="mb-4 block text-sm font-semibold text-stone-700">
+      <label className="mb-4 block text-sm font-semibold text-encre">
         Courriel
         <input
           className="champ mt-1"
@@ -73,7 +73,7 @@ export function AuthForm({ mode }: { mode: "connexion" | "inscription" }) {
         />
       </label>
 
-      <label className="mb-5 block text-sm font-semibold text-stone-700">
+      <label className="mb-5 block text-sm font-semibold text-encre">
         Mot de passe
         <input
           className="champ mt-1"

@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       mot_de_passe: await hashPassword(password)
     });
     const response = NextResponse.json({ succes: true });
-    response.cookies.set(SESSION_COOKIE, createSessionToken(user.id), {
+    response.cookies.set(SESSION_COOKIE, createSessionToken(user), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",

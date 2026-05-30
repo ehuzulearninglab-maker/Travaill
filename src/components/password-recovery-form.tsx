@@ -22,18 +22,18 @@ export function PasswordRecoveryForm() {
   }
 
   return (
-    <form onSubmit={submit} className="mx-auto w-full max-w-md rounded-md border border-stone-200 bg-white p-6 shadow-doux">
+    <form onSubmit={submit} className="mx-auto w-full max-w-md rounded-md border border-stone-100 bg-white p-6 shadow-doux">
       <div className="mb-6 flex items-center gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-md bg-sauge text-white">
           <MailCheck size={20} aria-hidden="true" />
         </span>
         <div>
           <h1 className="text-2xl font-bold text-encre">Récupération</h1>
-          <p className="text-sm text-stone-600">Indiquez le courriel lié à votre compte.</p>
+          <p className="text-sm text-brun">Indiquez le courriel lié à votre compte.</p>
         </div>
       </div>
 
-      <label className="mb-5 block text-sm font-semibold text-stone-700">
+      <label className="mb-5 block text-sm font-semibold text-encre">
         Courriel
         <input
           className="champ mt-1"
@@ -54,7 +54,7 @@ export function PasswordRecoveryForm() {
         {loading ? "Traitement..." : "Demander la récupération"}
       </button>
 
-      <p className="mt-5 text-center text-sm text-stone-600">
+      <p className="mt-5 text-center text-sm text-brun">
         <Link href="/connexion" className="font-bold text-sauge hover:underline">
           Revenir à la connexion
         </Link>

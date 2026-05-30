@@ -6,7 +6,7 @@ export default function ConnexionPage() {
     <div className="grid min-h-[70vh] place-items-center">
       <div className="w-full">
         <AuthForm mode="connexion" />
-        <div className="mt-5 space-y-2 text-center text-sm text-stone-600">
+        <div className="mt-5 space-y-2 text-center text-sm text-brun">
           <p>
             Pas encore de compte ?{" "}
             <Link href="/inscription" className="font-bold text-sauge hover:underline">

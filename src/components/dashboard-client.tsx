@@ -74,7 +74,7 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-brun">Espace enseignant</p>
             <h1 className="mt-2 text-3xl font-black text-encre">Tableau de bord</h1>
-            <p className="mt-2 max-w-2xl text-stone-600">
+            <p className="mt-2 max-w-2xl text-brun">
               Retrouvez les fiches reçues depuis votre GPT, corrigez-les et exportez-les dans un format prêt à partager.
             </p>
           </div>
@@ -89,7 +89,7 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
         <div className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
           <label className="relative block">
             <span className="sr-only">Rechercher</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brun" size={18} />
             <input
               className="champ pl-10"
               placeholder="Rechercher une matière, une classe, un titre..."
@@ -100,7 +100,7 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
 
           <label className="relative block">
             <span className="sr-only">Filtrer par classe</span>
-            <Filter className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+            <Filter className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brun" size={18} />
             <select className="champ pl-10" value={classe} onChange={(event) => setClasse(event.target.value)}>
               {classes.map((item) => (
                 <option key={item}>{item}</option>
@@ -118,14 +118,14 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
         {filtered.map((fiche) => (
           <article key={fiche.id} className="carte-fiche">
             <div className="mb-4 flex items-start justify-between gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-ciel text-sauge">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-ciel text-sauge">
                 <FileText size={19} aria-hidden="true" />
               </span>
-              <span className="rounded-md bg-ivoire px-2 py-1 text-xs font-bold text-brun">{fiche.classe}</span>
+              <span className="rounded-lg bg-ivoire px-2 py-1 text-xs font-bold text-brun">{fiche.classe}</span>
             </div>
             <h2 className="text-lg font-black leading-snug text-encre">{fiche.titre}</h2>
             <p className="mt-1 text-sm font-semibold text-sauge">{fiche.matiere}</p>
-            <p className="mt-3 text-sm text-stone-600">
+            <p className="mt-3 text-sm text-brun">
               Modifiée le{" "}
               {new Date(fiche.date_modification).toLocaleDateString("fr-FR", {
                 dateStyle: "medium"
@@ -159,9 +159,9 @@ export function DashboardClient({ initialFiches }: { initialFiches: FicheRecord[
       </section>
 
       {filtered.length === 0 ? (
-        <section className="rounded-md border border-dashed border-stone-300 bg-white/75 p-8 text-center">
+        <section className="rounded-xl border border-dashed border-stone-100 bg-white p-8 text-center shadow-doux">
           <p className="font-bold text-encre">Aucune fiche ne correspond à votre recherche.</p>
-          <p className="mt-2 text-sm text-stone-600">Modifiez les filtres ou créez une nouvelle fiche.</p>
+          <p className="mt-2 text-sm text-brun">Modifiez les filtres ou créez une nouvelle fiche.</p>
         </section>
       ) : null}
     </div>

@@ -68,12 +68,12 @@ export function FichePageLoader({
   }
 
   return (
-    <section className="rounded-md border border-stone-200 bg-white p-6 shadow-doux">
+    <section className="rounded-md border border-stone-100 bg-white p-6 shadow-doux">
       <p className="text-sm font-bold uppercase tracking-[0.16em] text-brun">Fiche introuvable</p>
       <h1 className="mt-2 text-2xl font-black text-encre">
         {loading ? "Chargement de la fiche..." : "Cette fiche n'est pas disponible sur cet appareil."}
       </h1>
-      <p className="mt-3 max-w-2xl text-stone-600">
+      <p className="mt-3 max-w-2xl text-brun">
         Retournez au tableau de bord et cliquez sur Actualiser. Les fiches visibles y sont conservées pour pouvoir les
         ouvrir et les exporter même si l'hébergement gratuit redémarre une fonction.
       </p>

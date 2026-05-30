@@ -1,10 +1,10 @@
 export default function PolitiqueConfidentialitePage() {
   return (
-    <div className="mx-auto max-w-3xl rounded-md border border-stone-200 bg-white p-6 shadow-doux">
+    <div className="mx-auto max-w-3xl rounded-md border border-stone-100 bg-white p-6 shadow-doux">
       <p className="text-sm font-bold uppercase tracking-[0.16em] text-brun">Confidentialité</p>
       <h1 className="mt-2 text-3xl font-black text-encre">Politique de confidentialité</h1>
 
-      <div className="mt-6 space-y-5 text-sm leading-7 text-stone-700">
+      <div className="mt-6 space-y-5 text-sm leading-7 text-encre">
         <p>
           Cette plateforme reçoit, enregistre et affiche des fiches pédagogiques validées par l’utilisateur depuis un
           GPT personnalisé. Elle ne génère pas de contenu par intelligence artificielle et ne demande aucune clé API

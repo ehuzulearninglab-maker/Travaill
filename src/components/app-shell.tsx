@@ -15,15 +15,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <header className="no-print sticky top-0 z-30 border-b border-stone-200/80 bg-white/90 backdrop-blur">
+      <header className="no-print sticky top-0 z-30 border-b border-stone-100 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <Link href="/tableau-de-bord" className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-md bg-sauge text-white">
+            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-sauge text-white shadow-sm">
               <BookOpenCheck size={22} aria-hidden="true" />
             </span>
             <span>
               <span className="block text-lg font-bold text-encre">Récepteur de fiches</span>
-              <span className="block text-sm text-stone-600">Canevas pédagogique connecté</span>
+              <span className="block text-sm text-brun">Canevas pédagogique connecté</span>
             </span>
           </Link>
 
@@ -34,7 +34,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:border-sauge hover:text-sauge"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-stone-100 bg-white px-4 py-2 text-sm font-bold text-encre shadow-sm transition hover:border-sauge hover:text-sauge"
                 >
                   <Icon size={16} aria-hidden="true" />
                   {item.label}
@@ -49,7 +49,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <footer className="no-print border-t border-stone-200/80 bg-white/75 px-4 py-5 text-center text-sm font-medium text-stone-600">
+      <footer className="no-print border-t border-stone-100 bg-white/90 px-4 py-5 text-center text-sm font-medium text-brun">
         Créé par Ehuzu Learning Lab
       </footer>
     </div>

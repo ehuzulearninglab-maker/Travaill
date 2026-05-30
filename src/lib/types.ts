@@ -52,11 +52,18 @@ export type ImportActivityRecord = {
   date: string;
 };
 
+export type AppSettingsRecord = {
+  gemini_api_key?: string;
+  gemini_model: string;
+  date_modification?: string;
+};
+
 export type DatabaseShape = {
   utilisateurs: UserRecord[];
   fiches: FicheRecord[];
   historique: HistoriqueRecord[];
   import_activites: ImportActivityRecord[];
+  parametres_app: AppSettingsRecord;
 };
 
 export type DeroulementRow = {

@@ -52,24 +52,24 @@ export function AdminUsersClient({ utilisateurs, currentUserId }: { utilisateurs
   return (
     <div className="space-y-5">
       <section className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-md border border-stone-200 bg-white p-4 shadow-doux">
+        <div className="rounded-md border border-stone-100 bg-white p-4 shadow-doux">
           <UserRound className="mb-3 text-sauge" size={22} aria-hidden="true" />
           <p className="text-2xl font-black text-encre">{counts.total}</p>
-          <p className="text-sm font-semibold text-stone-600">Comptes inscrits</p>
+          <p className="text-sm font-semibold text-brun">Comptes inscrits</p>
         </div>
-        <div className="rounded-md border border-stone-200 bg-white p-4 shadow-doux">
+        <div className="rounded-md border border-stone-100 bg-white p-4 shadow-doux">
           <ShieldCheck className="mb-3 text-sauge" size={22} aria-hidden="true" />
           <p className="text-2xl font-black text-encre">{counts.admins}</p>
-          <p className="text-sm font-semibold text-stone-600">Administrateurs</p>
+          <p className="text-sm font-semibold text-brun">Administrateurs</p>
         </div>
-        <div className="rounded-md border border-stone-200 bg-white p-4 shadow-doux">
+        <div className="rounded-md border border-stone-100 bg-white p-4 shadow-doux">
           <UserMinus className="mb-3 text-red-700" size={22} aria-hidden="true" />
           <p className="text-2xl font-black text-encre">{counts.suspendus}</p>
-          <p className="text-sm font-semibold text-stone-600">Comptes suspendus</p>
+          <p className="text-sm font-semibold text-brun">Comptes suspendus</p>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-md border border-stone-200 bg-white shadow-doux">
+      <section className="overflow-hidden rounded-md border border-stone-100 bg-white shadow-doux">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-ivoire text-xs uppercase tracking-[0.12em] text-brun">
@@ -85,7 +85,7 @@ export function AdminUsersClient({ utilisateurs, currentUserId }: { utilisateurs
                 <tr key={user.id} className="align-top">
                   <td className="px-4 py-4">
                     <p className="font-black text-encre">{user.nom}</p>
-                    <p className="mt-1 text-stone-600">{user.email}</p>
+                    <p className="mt-1 text-brun">{user.email}</p>
                   </td>
                   <td className="px-4 py-4">
                     <span
@@ -100,7 +100,7 @@ export function AdminUsersClient({ utilisateurs, currentUserId }: { utilisateurs
                       {roleLabels[user.role]}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-stone-600">
+                  <td className="px-4 py-4 text-brun">
                     {new Date(user.date_creation).toLocaleDateString("fr-FR", { dateStyle: "medium" })}
                   </td>
                   <td className="px-4 py-4">

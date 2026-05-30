@@ -43,10 +43,13 @@ export async function verifyCredentials(email: string, password: string): Promis
   return valid ? user : undefined;
 }
 
-export function createSessionToken(userId: string): string {
+export function createSessionToken(user: Pick<UserRecord, "id" | "nom" | "email" | "role">): string {
   const payload = base64Url(
     JSON.stringify({
-      sub: userId,
+      sub: user.id,
+      nom: user.nom,
+      email: user.email,
+      role: user.role,
       exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE_SECONDS
     })
   );
@@ -54,7 +57,12 @@ export function createSessionToken(userId: string): string {
   return `${payload}.${signature}`;
 }
 
-export function verifySessionToken(token: string | undefined): { userId: string } | undefined {
+export function verifySessionToken(token: string | undefined):
+  | {
+      userId: string;
+      user?: Pick<UserRecord, "id" | "nom" | "email" | "role">;
+    }
+  | undefined {
   if (!token || !token.includes(".")) {
     return undefined;
   }
@@ -73,11 +81,25 @@ export function verifySessionToken(token: string | undefined): { userId: string 
     const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
       sub?: string;
       exp?: number;
+      nom?: string;
+      email?: string;
+      role?: UserRecord["role"];
     };
     if (!decoded.sub || !decoded.exp || decoded.exp < Math.floor(Date.now() / 1000)) {
       return undefined;
     }
-    return { userId: decoded.sub };
+    return {
+      userId: decoded.sub,
+      user:
+        decoded.nom && decoded.email && decoded.role
+          ? {
+              id: decoded.sub,
+              nom: decoded.nom,
+              email: decoded.email,
+              role: decoded.role
+            }
+          : undefined
+    };
   } catch {
     return undefined;
   }
@@ -90,7 +112,19 @@ export async function userFromToken(token: string | undefined): Promise<UserReco
   }
 
   const user = await getUserById(session.userId);
-  return user?.role === "suspendu" ? undefined : user;
+  if (user) {
+    return user.role === "suspendu" ? undefined : user;
+  }
+
+  if (!session.user || session.user.role === "suspendu") {
+    return undefined;
+  }
+
+  return {
+    ...session.user,
+    mot_de_passe: "",
+    date_creation: new Date(0).toISOString()
+  };
 }
 
 export const sessionMaxAge = SESSION_MAX_AGE_SECONDS;

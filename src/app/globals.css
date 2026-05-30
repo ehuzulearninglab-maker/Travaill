@@ -4,10 +4,12 @@
 
 :root {
   color-scheme: light;
-  --fond: #fffaf1;
+  --fond: #FDFBF7;
   --papier: #ffffff;
-  --encre: #24231f;
-  --ligne: #d8c7ac;
+  --encre: #1B4332;
+  --secondaire: #52796F;
+  --primaire: #10B981;
+  --ligne: #dfe8e2;
 }
 
 * {
@@ -20,10 +22,7 @@ html {
 
 body {
   min-height: 100vh;
-  background:
-    linear-gradient(135deg, rgba(216, 230, 234, 0.58), transparent 30%),
-    linear-gradient(215deg, rgba(200, 159, 84, 0.16), transparent 42%),
-    linear-gradient(180deg, #fffaf1 0%, #f8f2e7 48%, #eef4f0 100%);
+  background: var(--fond);
   color: var(--encre);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -37,15 +36,21 @@ select {
   font: inherit;
 }
 
+::placeholder {
+  color: var(--secondaire);
+  opacity: 0.72;
+}
+
 textarea {
   min-height: 92px;
 }
 
 .feuille-pedagogique {
   background: var(--papier);
-  color: #181713;
-  border: 1px solid #d3b98d;
-  box-shadow: 0 22px 70px rgba(45, 35, 23, 0.15);
+  color: var(--encre);
+  border: 1px solid #e4ece7;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(27, 67, 50, 0.1);
 }
 
 .canevas-scroll {
@@ -65,14 +70,14 @@ textarea {
 }
 
 .entete-fiche {
-  border-bottom: 2px solid #1f1b16;
+  border-bottom: 2px solid var(--encre);
   margin-bottom: 14px;
   padding-bottom: 10px;
   text-align: center;
 }
 
 .entete-fiche p {
-  color: #7b4f25;
+  color: var(--secondaire);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.22em;
@@ -81,7 +86,7 @@ textarea {
 }
 
 .entete-fiche h1 {
-  color: #11100e;
+  color: var(--encre);
   font-size: 26px;
   font-weight: 900;
   line-height: 1.1;
@@ -93,7 +98,7 @@ textarea {
 }
 
 .bloc-canevas h2 {
-  color: #11100e;
+  color: var(--encre);
   font-size: 15px;
   font-weight: 900;
   margin: 0 0 8px;
@@ -114,14 +119,15 @@ textarea {
 
 .table-canevas th,
 .table-canevas td {
-  border: 1px solid #211b14;
+  border: 1px solid #264f3e;
   padding: 7px 8px;
   vertical-align: top;
 }
 
 .table-canevas th {
-  background: #efe3cf;
+  background: #eef8f3;
   font-weight: 700;
+  color: var(--encre);
 }
 
 .table-identification td {
@@ -174,34 +180,34 @@ textarea {
 }
 
 .cellule-vide {
-  color: #786f64;
+  color: var(--secondaire);
   font-style: italic;
   text-align: center;
 }
 
 @layer components {
   .champ {
-    @apply w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-sauge focus:ring-2 focus:ring-sauge/20;
+    @apply min-h-[44px] w-full rounded-lg border border-stone-100 bg-white px-4 py-3 text-sm text-encre outline-none transition placeholder:text-brun focus:border-sauge focus:ring-2 focus:ring-sauge/20;
   }
 
   .bouton-primaire {
-    @apply inline-flex items-center justify-center gap-2 rounded-md bg-sauge px-4 py-2 text-sm font-semibold text-white transition hover:bg-sauge/90;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-sauge px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-70;
   }
 
   .bouton-secondaire {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-encre transition hover:border-sauge hover:text-sauge;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-stone-100 bg-white px-5 py-2.5 text-sm font-bold text-encre transition hover:border-sauge hover:text-sauge;
   }
 
   .bouton-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-100;
   }
 
   .surface-premium {
-    @apply rounded-md border border-stone-200 bg-white/90 shadow-doux;
+    @apply rounded-xl border border-stone-100 bg-white shadow-doux;
   }
 
   .carte-fiche {
-    @apply rounded-md border border-stone-200 bg-white p-4 shadow-doux transition duration-200 hover:-translate-y-0.5 hover:border-sauge/50 hover:shadow-xl;
+    @apply rounded-xl border border-stone-100 bg-white p-5 shadow-doux transition duration-200 hover:-translate-y-0.5 hover:border-sauge/50 hover:shadow-xl;
   }
 }
 

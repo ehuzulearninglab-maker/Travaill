@@ -22,6 +22,15 @@ Les utilisateurs normaux qui créent un compte reçoivent automatiquement le rô
 
 - `/admin` : tableau de pilotage.
 - `/admin/utilisateurs` : suspension, réactivation et promotion admin.
-- `/admin/gemini` : statut Gemini, modèle utilisé, tokens suivis.
+- `/admin/gemini` : statut Gemini, saisie de la clé API, modèle utilisé, tokens suivis.
 
 Un utilisateur non admin qui tape directement une URL `/admin` est redirigé vers le tableau de bord.
+
+## Clé Gemini
+
+La clé peut être configurée de deux manières :
+
+1. Dans Vercel, avec `GEMINI_API_KEY`.
+2. Dans l'application, depuis `/admin/gemini`, avec un compte administrateur.
+
+Si une clé est enregistrée dans `/admin/gemini`, elle est prioritaire. La clé n'est jamais affichée entièrement dans l'interface.

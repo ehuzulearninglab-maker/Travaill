@@ -1,4 +1,5 @@
 import { normalizeImportedFiche } from "@/lib/import-normalizer";
+import { DEFAULT_GEMINI_MODEL, getGeminiRuntimeConfig } from "@/lib/storage";
 import type { FicheContenu, JsonValue } from "@/lib/types";
 
 type GeminiPart = {
@@ -30,9 +31,6 @@ type FormattedImport = {
   tokens_total: number;
   avertissement?: string;
 };
-
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const ficheSchema = {
   type: "object",
@@ -175,7 +173,11 @@ Fiche recue :
 ${JSON.stringify(content, null, 2)}`;
 }
 
-async function callGemini(content: FicheContenu, apiKey: string): Promise<{
+function geminiEndpoint(model: string): string {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
+
+async function callGemini(content: FicheContenu, apiKey: string, model: string): Promise<{
   contenu: FicheContenu;
   tokens_entree: number;
   tokens_sortie: number;
@@ -184,7 +186,7 @@ async function callGemini(content: FicheContenu, apiKey: string): Promise<{
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
 
-  const response = await fetch(GEMINI_ENDPOINT, {
+  const response = await fetch(geminiEndpoint(model), {
     method: "POST",
     signal: controller.signal,
     headers: {
@@ -235,13 +237,15 @@ async function callGemini(content: FicheContenu, apiKey: string): Promise<{
 
 export async function formatImportedFiche(content: FicheContenu): Promise<FormattedImport> {
   const local = normalizeImportedFiche(content);
-  const apiKey = process.env.GEMINI_API_KEY;
+  const config = await getGeminiRuntimeConfig();
+  const model = config.model || DEFAULT_GEMINI_MODEL;
+  const apiKey = config.apiKey;
 
   if (!apiKey) {
     return {
       contenu: local,
       source: "local",
-      modele: GEMINI_MODEL,
+      modele: model,
       tokens_entree: 0,
       tokens_sortie: 0,
       tokens_total: 0,
@@ -250,11 +254,11 @@ export async function formatImportedFiche(content: FicheContenu): Promise<Format
   }
 
   try {
-    const gemini = await callGemini(local, apiKey);
+    const gemini = await callGemini(local, apiKey, model);
     return {
       contenu: normalizeImportedFiche(mergeContent(local, gemini.contenu)),
       source: "gemini",
-      modele: GEMINI_MODEL,
+      modele: model,
       tokens_entree: gemini.tokens_entree,
       tokens_sortie: gemini.tokens_sortie,
       tokens_total: gemini.tokens_total
@@ -263,7 +267,7 @@ export async function formatImportedFiche(content: FicheContenu): Promise<Format
     return {
       contenu: local,
       source: "local",
-      modele: GEMINI_MODEL,
+      modele: model,
       tokens_entree: 0,
       tokens_sortie: 0,
       tokens_total: 0,
