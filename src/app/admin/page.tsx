@@ -16,7 +16,7 @@ function StatCard({
 }) {
   return (
     <article className="rounded-md border border-stone-200 bg-white p-5 shadow-doux">
-      <Icon className="mb-4 text-sauge" size={24} aria-hidden="true" />
+      <Icon className="mb-4 text-sauge" size={24} aria-hidden={true} />
       <p className="text-3xl font-black text-encre">{value}</p>
       <p className="mt-1 text-sm font-semibold text-stone-600">{label}</p>
     </article>
