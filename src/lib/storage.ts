@@ -42,14 +42,19 @@ function usePostgres(): boolean {
 }
 
 function databaseConnectionString(): string | undefined {
-  return (
+  const candidate =
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.POSTGRES_PRISMA_URL ||
     process.env.POSTGRES_URL_NON_POOLING ||
     process.env.SUPABASE_DB_URL ||
-    process.env.SUPABASE_POSTGRES_URL
-  );
+    process.env.SUPABASE_POSTGRES_URL;
+
+  const value = candidate?.trim();
+  if (!value || !/^postgres(ql)?:\/\//i.test(value)) {
+    return undefined;
+  }
+  return value;
 }
 
 async function getPool(): Promise<PgPool> {
