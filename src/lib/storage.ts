@@ -770,15 +770,30 @@ export async function getGeminiAdminStatus(): Promise<{
   source: "admin" | "environnement" | "absent";
   apercu_cle?: string;
   date_modification?: string;
+  stockage: "postgres" | "temporaire";
+  stockage_persistant: boolean;
+  avertissement?: string;
 }> {
   const settings = await getGeminiSettings();
   const runtime = await getGeminiRuntimeConfig();
+  const stockagePersistant = usePostgres();
+  const stockage = stockagePersistant ? "postgres" : "temporaire";
+  const avertissement =
+    !stockagePersistant && runtime.source === "admin"
+      ? "La clé est active, mais elle est enregistrée dans un stockage temporaire Vercel. Elle peut disparaître. Pour une clé durable, ajoutez GEMINI_API_KEY dans les variables d'environnement Vercel ou configurez une base PostgreSQL/Supabase."
+      : !stockagePersistant && runtime.source === "absent"
+        ? "Aucune base PostgreSQL persistante n'est configurée. Une clé enregistrée ici peut disparaître sur Vercel. La solution la plus fiable est d'ajouter GEMINI_API_KEY dans les variables d'environnement Vercel."
+        : undefined;
+
   return {
     actif: Boolean(runtime.apiKey),
     modele: runtime.model,
     source: runtime.source,
     apercu_cle: runtime.source === "admin" ? maskSecret(settings.gemini_api_key) : maskSecret(process.env.GEMINI_API_KEY),
-    date_modification: settings.date_modification
+    date_modification: settings.date_modification,
+    stockage,
+    stockage_persistant: stockagePersistant,
+    avertissement
   };
 }
 

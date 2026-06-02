@@ -9,6 +9,14 @@ Deux options sont possibles :
 1. Ajouter `GEMINI_API_KEY` dans Vercel, section **Settings > Environment Variables**.
 2. Ouvrir `/admin/gemini` dans l'application, puis enregistrer la clé avec un compte administrateur.
 
+En production Vercel, l'option 2 est durable seulement si l'application utilise une vraie base
+PostgreSQL/Supabase via `DATABASE_URL`, `POSTGRES_URL`, `POSTGRES_PRISMA_URL`,
+`POSTGRES_URL_NON_POOLING`, `SUPABASE_DB_URL` ou `SUPABASE_POSTGRES_URL`.
+Si aucune de ces variables n'est configurée, la clé enregistrée dans l'admin peut
+disparaître au bout de quelques secondes ou après un redémarrage Vercel.
+Dans ce cas, la solution la plus fiable est d'ajouter `GEMINI_API_KEY` directement dans
+les variables d'environnement Vercel, puis de redéployer l'application.
+
 ```text
 GEMINI_API_KEY=la_cle_google_ai_studio
 GEMINI_MODEL=gemini-2.5-flash-lite

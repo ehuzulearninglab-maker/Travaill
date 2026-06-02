@@ -39,5 +39,12 @@ export async function POST(request: Request) {
     effacer_cle: body.effacer_cle === true
   });
 
-  return NextResponse.json({ succes: true, parametres: await getGeminiAdminStatus() });
+  const parametres = await getGeminiAdminStatus();
+  return NextResponse.json({
+    succes: true,
+    parametres,
+    message:
+      parametres.avertissement ||
+      (body.effacer_cle === true ? "Clé Gemini retirée." : "Paramètres Gemini enregistrés.")
+  });
 }

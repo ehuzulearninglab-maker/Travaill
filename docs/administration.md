@@ -34,3 +34,10 @@ La clé peut être configurée de deux manières :
 2. Dans l'application, depuis `/admin/gemini`, avec un compte administrateur.
 
 Si une clé est enregistrée dans `/admin/gemini`, elle est prioritaire. La clé n'est jamais affichée entièrement dans l'interface.
+
+Attention : sur Vercel, la clé enregistrée dans `/admin/gemini` est durable seulement si
+l'application est reliée à une base PostgreSQL/Supabase avec une variable comme
+`DATABASE_URL`, `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`,
+`SUPABASE_DB_URL` ou `SUPABASE_POSTGRES_URL`. Sans cette base persistante, la clé peut
+repasser à "absente" après quelques secondes. Dans ce cas, mettre `GEMINI_API_KEY`
+directement dans les variables d'environnement Vercel.

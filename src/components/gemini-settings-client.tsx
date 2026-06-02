@@ -9,6 +9,9 @@ type GeminiAdminStatus = {
   source: "admin" | "environnement" | "absent";
   apercu_cle?: string;
   date_modification?: string;
+  stockage?: "postgres" | "temporaire";
+  stockage_persistant?: boolean;
+  avertissement?: string;
 };
 
 const sourceLabels: Record<GeminiAdminStatus["source"], string> = {
@@ -49,7 +52,7 @@ export function GeminiSettingsClient({ initialStatus }: { initialStatus: GeminiA
     setStatus(data.parametres);
     setModel(data.parametres.modele);
     setApiKey("");
-    setMessage(clearKey ? "Clé Gemini retirée." : "Paramètres Gemini enregistrés.");
+    setMessage(data.message || (clearKey ? "Clé Gemini retirée." : "Paramètres Gemini enregistrés."));
   }
 
   return (
@@ -112,7 +115,17 @@ export function GeminiSettingsClient({ initialStatus }: { initialStatus: GeminiA
         <p>
           <span className="font-bold text-encre">Clé :</span> {status.apercu_cle || "non configurée"}
         </p>
+        <p>
+          <span className="font-bold text-encre">Base utilisée :</span>{" "}
+          {status.stockage_persistant ? "PostgreSQL / Supabase" : "mémoire temporaire"}
+        </p>
       </div>
+
+      {status.avertissement ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          {status.avertissement}
+        </div>
+      ) : null}
 
       {message ? <p className="mt-3 text-sm font-bold text-sauge">{message}</p> : null}
     </section>

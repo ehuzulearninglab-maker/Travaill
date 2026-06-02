@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Settings, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Settings } from "lucide-react";
 import { GeminiSettingsClient } from "@/components/gemini-settings-client";
 import { getCurrentUser } from "@/lib/current-user";
 import { getAdminOverview, getGeminiAdminStatus, listImportActivities } from "@/lib/storage";
@@ -19,7 +19,6 @@ export default async function AdminGeminiPage() {
     listImportActivities(40),
     getGeminiAdminStatus()
   ]);
-  const geminiActive = geminiStatus.actif;
   const model = geminiStatus.modele;
 
   return (
@@ -37,13 +36,9 @@ export default async function AdminGeminiPage() {
               Vérifiez l’activation, le modèle utilisé et les tokens consommés lors de la mise en forme des fiches.
             </p>
           </div>
-          <span
-            className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-bold ${
-              geminiActive ? "bg-ciel text-sauge" : "bg-red-50 text-red-700"
-            }`}
-          >
-            {geminiActive ? <ShieldCheck size={17} aria-hidden="true" /> : <Settings size={17} aria-hidden="true" />}
-            {geminiActive ? "Gemini actif" : "Clé absente"}
+          <span className="inline-flex items-center gap-2 rounded-md bg-ivoire px-3 py-2 text-sm font-bold text-encre">
+            <Settings size={17} aria-hidden="true" />
+            Configuration Gemini
           </span>
         </div>
       </section>
