@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { formatImportedFiche } from "@/lib/gemini-formatter";
-import { DEFAULT_USER_ID, getUserByEmail, importFiche, recordImportActivity } from "@/lib/storage";
+import { getUserByEmail, importFiche, recordImportActivity } from "@/lib/storage";
 import type { FicheContenu } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -8,6 +8,10 @@ export const runtime = "nodejs";
 type ImportBody = {
   secret_key?: string;
   utilisateur_email?: string;
+  email?: string;
+  courriel?: string;
+  enseignant_email?: string;
+  compte_email?: string;
   fiche?: FicheContenu;
 } & Record<string, unknown>;
 
@@ -27,6 +31,35 @@ function readSecret(request: Request, body: ImportBody): string | undefined {
     bearer ||
     body.secret_key
   );
+}
+
+function readText(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function readTargetEmail(body: ImportBody): string | undefined {
+  const direct =
+    readText(body.utilisateur_email) ||
+    readText(body.enseignant_email) ||
+    readText(body.compte_email) ||
+    readText(body.courriel) ||
+    readText(body.email);
+
+  if (direct) {
+    return direct.toLowerCase();
+  }
+
+  if (isPlainObject(body.fiche)) {
+    const nested =
+      readText(body.fiche.utilisateur_email) ||
+      readText(body.fiche.enseignant_email) ||
+      readText(body.fiche.compte_email) ||
+      readText(body.fiche.courriel) ||
+      readText(body.fiche.email);
+    return nested?.toLowerCase();
+  }
+
+  return undefined;
 }
 
 export async function POST(request: Request) {
@@ -49,7 +82,16 @@ export async function POST(request: Request) {
   if (isPlainObject(body.fiche)) {
     fichePayload = body.fiche as FicheContenu;
   } else {
-    const { secret_key: _secretKey, utilisateur_email: _email, fiche: _fiche, ...topLevelFiche } = body;
+    const {
+      secret_key: _secretKey,
+      utilisateur_email: _userEmail,
+      enseignant_email: _teacherEmail,
+      compte_email: _accountEmail,
+      courriel: _courriel,
+      email: _email,
+      fiche: _fiche,
+      ...topLevelFiche
+    } = body;
     if (Object.keys(topLevelFiche).length > 0) {
       fichePayload = topLevelFiche as FicheContenu;
     }
@@ -66,13 +108,35 @@ export async function POST(request: Request) {
     );
   }
 
-  const targetUser = body.utilisateur_email ? await getUserByEmail(body.utilisateur_email) : undefined;
+  const targetEmail = readTargetEmail(body);
+  if (!targetEmail) {
+    return NextResponse.json(
+      {
+        succes: false,
+        message:
+          "Courriel destinataire absent. Envoyez utilisateur_email avec le courriel du compte enseignant qui doit recevoir la fiche."
+      },
+      { status: 400 }
+    );
+  }
+
+  const targetUser = await getUserByEmail(targetEmail);
+  if (!targetUser) {
+    return NextResponse.json(
+      {
+        succes: false,
+        message: `Aucun compte enseignant ne correspond à ${targetEmail}. Créez d'abord ce compte dans l'application.`
+      },
+      { status: 404 }
+    );
+  }
+
   if (targetUser?.role === "suspendu") {
     return NextResponse.json({ succes: false, message: "Compte destinataire suspendu." }, { status: 403 });
   }
 
   const formatted = await formatImportedFiche(fichePayload);
-  const userId = targetUser?.id ?? DEFAULT_USER_ID;
+  const userId = targetUser.id;
   const fiche = await importFiche(formatted.contenu, userId);
 
   await recordImportActivity({
@@ -91,6 +155,7 @@ export async function POST(request: Request) {
     succes: true,
     message: "Fiche reçue et enregistrée.",
     fiche_id: fiche.id,
+    utilisateur_email: targetEmail,
     mise_en_forme: formatted.source,
     modele: formatted.modele,
     tokens_total: formatted.tokens_total,

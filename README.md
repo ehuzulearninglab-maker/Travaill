@@ -62,7 +62,7 @@ Exemple :
 }
 ```
 
-Le champ `utilisateur_email` est facultatif. S’il est absent, la fiche est rattachée au compte de démonstration.
+Le champ `utilisateur_email` est obligatoire. Il doit contenir le courriel exact du compte enseignant qui doit recevoir la fiche. Si le compte n'existe pas encore dans l'application, l'import est refusé pour éviter que la fiche soit rattachée par erreur au compte administrateur.
 
 Pour une action GPT, configurer l’authentification en clé API avec l’en-tête `x-import-secret`. Le corps JSON doit contenir directement les champs de la fiche.
 

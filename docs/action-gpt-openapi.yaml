@@ -18,11 +18,12 @@ paths:
             schema:
               type: object
               required:
+                - utilisateur_email
                 - texte_integral
               properties:
                 utilisateur_email:
                   type: string
-                  description: Adresse de l’enseignant destinataire, si disponible.
+                  description: Adresse courriel exacte du compte enseignant destinataire dans l'application.
                 texte_integral:
                   type: string
                   description: Texte complet de la fiche validée, copié fidèlement depuis la réponse finale du GPT.

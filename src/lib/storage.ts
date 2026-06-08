@@ -30,6 +30,8 @@ type PgRow = Record<string, unknown>;
 const globalForPg = globalThis as typeof globalThis & {
   fichesPool?: PgPool;
   fichesSeeded?: boolean;
+  fichesPostgresDisabled?: boolean;
+  fichesPostgresError?: string;
   fichesLocalDb?: DatabaseShape;
 };
 
@@ -38,7 +40,7 @@ function nowIso(): string {
 }
 
 function usePostgres(): boolean {
-  return Boolean(databaseConnectionString());
+  return Boolean(databaseConnectionString()) && !globalForPg.fichesPostgresDisabled;
 }
 
 function databaseConnectionString(): string | undefined {
@@ -68,6 +70,11 @@ async function getPool(): Promise<PgPool> {
     ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
   });
   return globalForPg.fichesPool;
+}
+
+function disablePostgres(error: unknown): void {
+  globalForPg.fichesPostgresDisabled = true;
+  globalForPg.fichesPostgresError = error instanceof Error ? error.message : String(error);
 }
 
 function asIso(value: unknown): string {
@@ -274,16 +281,54 @@ function initialDatabase(): DatabaseShape {
   };
 }
 
-async function ensurePostgresSeed(): Promise<void> {
-  if (globalForPg.fichesSeeded) {
-    return;
+async function ensurePostgresSeed(): Promise<boolean> {
+  if (globalForPg.fichesPostgresDisabled) {
+    return false;
   }
 
+  if (globalForPg.fichesSeeded) {
+    return true;
+  }
+
+  try {
   const pool = await getPool();
+  await pool.query(`
+    create table if not exists utilisateurs (
+      id uuid primary key,
+      nom text not null,
+      email text not null unique,
+      mot_de_passe text not null,
+      role text not null default 'enseignant',
+      date_creation timestamptz not null default now()
+    )
+  `);
   await pool.query("alter table utilisateurs add column if not exists role text not null default 'enseignant'");
   await pool.query(`
+    create table if not exists fiches (
+      id uuid primary key,
+      utilisateur_id uuid not null references utilisateurs(id) on delete cascade,
+      titre text not null,
+      matiere text not null,
+      classe text not null,
+      contenu_json jsonb not null,
+      date_creation timestamptz not null default now(),
+      date_modification timestamptz not null default now()
+    )
+  `);
+  await pool.query("create index if not exists fiches_utilisateur_date_idx on fiches (utilisateur_id, date_modification desc)");
+  await pool.query(`
+    create table if not exists historique (
+      id uuid primary key,
+      fiche_id uuid not null references fiches(id) on delete cascade,
+      version integer not null,
+      contenu jsonb not null,
+      date timestamptz not null default now()
+    )
+  `);
+  await pool.query("create unique index if not exists historique_fiche_version_idx on historique (fiche_id, version)");
+  await pool.query(`
     create table if not exists import_activites (
-      id uuid primary key default gen_random_uuid(),
+      id uuid primary key,
       utilisateur_id uuid not null references utilisateurs(id) on delete cascade,
       fiche_id uuid references fiches(id) on delete set null,
       source text not null,
@@ -354,6 +399,11 @@ async function ensurePostgresSeed(): Promise<void> {
   );
 
   globalForPg.fichesSeeded = true;
+  return true;
+  } catch (error) {
+    disablePostgres(error);
+    return false;
+  }
 }
 
 async function readDatabase(): Promise<DatabaseShape> {
@@ -408,8 +458,7 @@ async function writeDatabase(db: DatabaseShape): Promise<void> {
 }
 
 export async function getUserByEmail(email: string): Promise<UserRecord | undefined> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query("select * from utilisateurs where lower(email) = lower($1) limit 1", [email]);
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
@@ -420,8 +469,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | undefi
 }
 
 export async function getUserById(id: string): Promise<UserRecord | undefined> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query("select * from utilisateurs where id = $1 limit 1", [id]);
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
@@ -436,8 +484,7 @@ export async function createUser(input: {
   email: string;
   mot_de_passe: string;
 }): Promise<UserRecord> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     try {
       const role = asUserRole(undefined, input.email);
@@ -477,8 +524,7 @@ export async function createUser(input: {
 }
 
 export async function listFiches(userId: string): Promise<FicheRecord[]> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query(
       "select * from fiches where utilisateur_id = $1 order by date_modification desc",
@@ -494,8 +540,7 @@ export async function listFiches(userId: string): Promise<FicheRecord[]> {
 }
 
 export async function getFiche(id: string, userId: string): Promise<FicheRecord | undefined> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query("select * from fiches where id = $1 and utilisateur_id = $2 limit 1", [
       id,
@@ -509,8 +554,7 @@ export async function getFiche(id: string, userId: string): Promise<FicheRecord 
 }
 
 export async function createFiche(userId: string, contenu: FicheContenu = createEmptyFiche()): Promise<FicheRecord> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const date = nowIso();
     const meta = inferFicheMeta(contenu);
@@ -567,8 +611,7 @@ export async function updateFiche(
   userId: string,
   contenu: FicheContenu
 ): Promise<FicheRecord | undefined> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const current = await getFiche(id, userId);
     if (!current) {
@@ -645,8 +688,7 @@ export async function updateFiche(
 }
 
 export async function deleteFiche(id: string, userId: string): Promise<boolean> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query("delete from fiches where id = $1 and utilisateur_id = $2 returning id", [
       id,
@@ -668,8 +710,7 @@ export async function deleteFiche(id: string, userId: string): Promise<boolean> 
 }
 
 export async function listUsersForAdmin(): Promise<UserRecord[]> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query("select * from utilisateurs order by date_creation desc");
     return result.rows.map(toUser);
@@ -680,8 +721,7 @@ export async function listUsersForAdmin(): Promise<UserRecord[]> {
 }
 
 export async function updateUserRole(id: string, role: UserRole): Promise<UserRecord | undefined> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query("update utilisateurs set role = $1 where id = $2 returning *", [role, id]);
     return result.rows[0] ? toUser(result.rows[0]) : undefined;
@@ -699,8 +739,7 @@ export async function updateUserRole(id: string, role: UserRole): Promise<UserRe
 }
 
 export async function getGeminiSettings(): Promise<AppSettingsRecord> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query("select * from parametres_app where id = $1 limit 1", [APP_SETTINGS_ID]);
     return toAppSettings(result.rows[0]);
@@ -726,8 +765,7 @@ export async function updateGeminiSettings(input: {
     date_modification: nowIso()
   };
 
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query(
       `insert into parametres_app (id, gemini_api_key, gemini_model, date_modification)
@@ -827,8 +865,7 @@ export async function recordImportActivity(input: {
     date: nowIso()
   };
 
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query(
       `insert into import_activites
@@ -860,8 +897,7 @@ export async function recordImportActivity(input: {
 }
 
 export async function listImportActivities(limit = 50): Promise<ImportActivityRecord[]> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query("select * from import_activites order by date desc limit $1", [limit]);
     return result.rows.map(toImportActivity);
@@ -881,8 +917,7 @@ export async function getAdminOverview(): Promise<{
   importsGemini: number;
   tokensTotal: number;
 }> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const [users, fiches, imports] = await Promise.all([
       pool.query(
@@ -929,8 +964,7 @@ export async function getAdminOverview(): Promise<{
 }
 
 export async function listHistorique(ficheId: string, userId: string): Promise<HistoriqueRecord[]> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const fiche = await getFiche(ficheId, userId);
     if (!fiche) {
@@ -955,8 +989,7 @@ export async function listHistorique(ficheId: string, userId: string): Promise<H
 }
 
 export async function listHistoriqueForUser(userId: string): Promise<Array<HistoriqueRecord & { fiche?: FicheRecord }>> {
-  if (usePostgres()) {
-    await ensurePostgresSeed();
+  if (usePostgres() && (await ensurePostgresSeed())) {
     const pool = await getPool();
     const result = await pool.query(
       `select
