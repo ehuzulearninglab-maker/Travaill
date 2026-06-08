@@ -1,21 +1,27 @@
-# Récepteur de fiches pédagogiques
+# Cantine Intelligente
 
-Application web Next.js destinée à recevoir des fiches validées depuis un GPT personnalisé, les afficher dans un canevas pédagogique, les modifier, les sauvegarder et les exporter.
+Plateforme web d'aide a la planification alimentaire scolaire. L'application aide un gestionnaire de cantine a generer un menu hebdomadaire coherent, calculer les quantites d'achat, suivre le budget et produire un rapport de verification nutritionnelle.
 
-Application publiée : https://travaill.vercel.app
+## Fonctionnalites MVP
 
-## Points clés
+- Formulaire de planification : nombre d'enfants, tranche d'age, budget, duree, saison et contraintes alimentaires.
+- Generation automatique d'un menu par jour avec energie, proteine, fruit et vegetal.
+- Calcul des portions par enfant, quantites totales, quantites d'achat arrondies et couts.
+- Remplacement interactif d'un aliment avec recalcul immediat.
+- Liste d'achats agregee.
+- Rapport de verification : proteine, fruit, energie, vegetal, compatibilite culinaire et budget.
+- Export CSV et impression PDF via le navigateur.
+- Espace administrateur de demonstration pour visualiser la base alimentaire et simuler l'import Excel/CSV.
 
-- Interface entièrement orientée enseignants, en français.
-- Aucune génération d’IA dans l’application.
-- Aucune clé OpenAI demandée ou utilisée.
-- Route d’import sécurisée : `POST /api/fiches/import`.
-- Canevas flexible : les champs non prévus sont affichés dans les sections supplémentaires.
-- Sauvegarde automatique et historique de versions.
-- Export PDF, export Word et impression.
-- Connexion, inscription et point d’entrée pour la récupération de mot de passe.
+## Stack
 
-## Installation
+- Next.js 15
+- React 19
+- TypeScript
+- Tailwind CSS
+- Lucide React
+
+## Demarrage local
 
 ```bash
 npm install
@@ -24,86 +30,60 @@ npm run dev
 
 Ouvrir ensuite `http://localhost:3000`.
 
-Compte de démonstration :
-
-- Courriel : `enseignant@ehuzu.test`
-- Mot de passe : `enseignant-demo`
-
-## Variables d’environnement
-
-Créer un fichier `.env.local` à partir de `.env.example`.
+## Verification
 
 ```bash
-IMPORT_SECRET_KEY=CLE_SECURISEE
-AUTH_SECRET=une-valeur-longue-et-secrète
+npm run typecheck
+npm run build
+```
+
+## Variables d'environnement
+
+Copier `.env.example` vers `.env.local` en developpement.
+
+```bash
+NEXT_PUBLIC_APP_NAME=Cantine Intelligente
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+AUTH_SECRET=changez-cette-valeur-en-production
+DATABASE_URL=
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-## Import depuis le GPT personnalisé
+Le MVP principal fonctionne sans base de donnees externe. `DATABASE_URL` et `GEMINI_API_KEY` sont optionnels pour les modules serveur herites et pour de futures explications IA persistantes.
 
-Le GPT doit envoyer la fiche validée vers :
+## Hebergement Vercel
 
-```http
-POST /api/fiches/import
-Content-Type: application/json
+Le depot contient `vercel.json`. Une fois pousse sur GitHub, Vercel peut construire automatiquement l'application avec :
+
+- Install command : `npm install`
+- Build command : `npm run build`
+- Output directory : `.next`
+
+Variables minimales conseillees dans Vercel :
+
+```bash
+NEXT_PUBLIC_APP_NAME=Cantine Intelligente
+NEXT_PUBLIC_APP_URL=https://votre-domaine.vercel.app
+AUTH_SECRET=une-valeur-longue-et-secrete
+IMPORT_SECRET_KEY=une-cle-longue
 ```
 
-Exemple :
+Variables optionnelles :
 
-```json
-{
-  "utilisateur_email": "enseignant@ehuzu.test",
-  "fiche_de": "Mathématiques",
-  "classe": "CM1",
-  "date": "2026-05-21",
-  "duree": "45 min",
-  "deroulement": [],
-  "resultats_attendus": ""
-}
+```bash
+DATABASE_URL=postgresql://...
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-Le champ `utilisateur_email` est obligatoire. Il doit contenir le courriel exact du compte enseignant qui doit recevoir la fiche. Si le compte n'existe pas encore dans l'application, l'import est refusé pour éviter que la fiche soit rattachée par erreur au compte administrateur.
+## Limite importante
 
-Pour une action GPT, configurer l’authentification en clé API avec l’en-tête `x-import-secret`. Le corps JSON doit contenir directement les champs de la fiche.
+Les menus generes par Cantine Intelligente sont des propositions d'aide a la decision. Ils ne remplacent pas l'avis d'un nutritionniste qualifie. Les portions, prix et compatibilites culinaires doivent etre valides avec une base alimentaire locale fiable avant une utilisation terrain.
 
-Clé de test recommandée pour l’action GPT : `CLE_SECURISEE`.
+## Structure principale
 
-## Base de données
-
-En production, renseigner `DATABASE_URL` avec l’adresse PostgreSQL de Supabase. En local, si `DATABASE_URL` est absente, l’application utilise `data/database.json` pour permettre un démarrage rapide sans serveur externe.
-
-Le schéma PostgreSQL de production est fourni dans `docs/schema-postgresql.sql`.
-
-## Action GPT
-
-Un exemple de schéma OpenAPI pour l’action GPT est disponible dans `docs/action-gpt-openapi.yaml`.
-
-## Modèle pédagogique
-
-Le canevas reprend les sections obligatoires du modèle fourni :
-
-- fiche de, dossier ou unité, S.A.N, séquence, date, cours, fiche N°, durée ;
-- éléments de planification ;
-- contenu de formation ;
-- compétences disciplinaires et transversales ;
-- connaissances et techniques ;
-- stratégies pédagogiques ;
-- matériel ;
-- grand tableau pédagogique ;
-- consignes et résultats attendus ;
-- sections supplémentaires selon la matière.
-
-Le PDF vierge transmis comme référence est conservé dans `docs/modele-fiche-vierge.pdf`.
-
-## Production
-
-Pour une mise en production, remplacer le stockage fichier par PostgreSQL ou Supabase, configurer `AUTH_SECRET`, définir une vraie clé d’import et servir l’application derrière HTTPS.
-
-## Déploiement gratuit conseillé
-
-1. Pousser le code sur GitHub.
-2. Créer un projet Supabase gratuit.
-3. Exécuter `docs/schema-postgresql.sql` dans Supabase SQL Editor.
-4. Créer un projet Vercel à partir du dépôt GitHub.
-5. Ajouter les variables `DATABASE_URL`, `IMPORT_SECRET_KEY`, `AUTH_SECRET` et `NEXT_PUBLIC_APP_URL` dans Vercel.
-6. Utiliser `/politique-confidentialite` comme URL de politique de confidentialité dans l’action GPT.
+- `src/components/cantine-app.tsx` : interface applicative.
+- `src/lib/cantine-engine.ts` : base alimentaire de demonstration, moteur de selection, calculs et verification.
+- `src/app/page.tsx` : page d'accueil de l'application.
+- `vercel.json` : configuration d'hebergement Vercel.

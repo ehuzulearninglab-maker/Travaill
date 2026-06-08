@@ -4,12 +4,15 @@
 
 :root {
   color-scheme: light;
-  --fond: #FDFBF7;
+  --fond: #F5F7FA;
   --papier: #ffffff;
-  --encre: #1B4332;
-  --secondaire: #52796F;
-  --primaire: #10B981;
-  --ligne: #dfe8e2;
+  --encre: #172033;
+  --secondaire: #5D6B78;
+  --primaire: #1B6CA8;
+  --sante: #2E8B57;
+  --energie: #E8732A;
+  --danger: #C0392B;
+  --ligne: #DCE4EC;
 }
 
 * {
@@ -187,15 +190,15 @@ textarea {
 
 @layer components {
   .champ {
-    @apply min-h-[44px] w-full rounded-lg border border-stone-100 bg-white px-4 py-3 text-sm text-encre outline-none transition placeholder:text-brun focus:border-sauge focus:ring-2 focus:ring-sauge/20;
+    @apply min-h-[44px] w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-sauge focus:ring-2 focus:ring-sauge/20;
   }
 
   .bouton-primaire {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-sauge px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-70;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-sauge px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70;
   }
 
   .bouton-secondaire {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-stone-100 bg-white px-5 py-2.5 text-sm font-bold text-encre transition hover:border-sauge hover:text-sauge;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:border-sauge hover:text-sauge;
   }
 
   .bouton-danger {
@@ -203,11 +206,11 @@ textarea {
   }
 
   .surface-premium {
-    @apply rounded-xl border border-stone-100 bg-white shadow-doux;
+    @apply rounded-lg border border-slate-200 bg-white shadow-doux;
   }
 
   .carte-fiche {
-    @apply rounded-xl border border-stone-100 bg-white p-5 shadow-doux transition duration-200 hover:-translate-y-0.5 hover:border-sauge/50 hover:shadow-xl;
+    @apply rounded-lg border border-slate-200 bg-white p-5 shadow-doux transition duration-200 hover:-translate-y-0.5 hover:border-sauge/50 hover:shadow-xl;
   }
 }
 

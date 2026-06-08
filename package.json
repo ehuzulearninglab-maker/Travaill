@@ -1,12 +1,13 @@
 {
-  "name": "recepteur-de-fiches-pedagogiques",
+  "name": "cantine-intelligente",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy:vercel": "vercel --prod"
   },
   "dependencies": {
     "docx": "^9.2.0",

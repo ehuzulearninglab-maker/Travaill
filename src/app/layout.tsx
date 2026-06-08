@@ -3,8 +3,8 @@ import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Récepteur de fiches pédagogiques",
-  description: "Plateforme de réception, édition et export de fiches pédagogiques."
+  title: "Cantine Intelligente",
+  description: "Plateforme web d'aide a la planification alimentaire scolaire."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
