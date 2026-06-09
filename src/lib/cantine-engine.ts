@@ -2,7 +2,7 @@ export type AgeRange = "3-6 ans" | "6-10 ans" | "10-15 ans";
 export type Season = "Aucune" | "Seche" | "Pluies";
 export type FoodSeason = "Seche" | "Pluies" | "Toute saison";
 export type Constraint = "sans porc" | "vegetarien" | "allergie arachide" | "sans poisson";
-export type FoodRole = "energetique" | "proteine" | "fruit" | "vegetal";
+export type FoodRole = "energetique" | "proteine" | "fruit" | "vegetal" | "autre";
 export type Status = "Conforme" | "Attention" | "Non conforme";
 export type PortionUnit = "g" | "piece";
 
@@ -92,7 +92,8 @@ export const roleLabels: Record<FoodRole, string> = {
   energetique: "Energie",
   proteine: "Proteine",
   fruit: "Fruit",
-  vegetal: "Vegetal"
+  vegetal: "Vegetal",
+  autre: "Autre"
 };
 
 export const constraints: Constraint[] = ["sans porc", "vegetarien", "allergie arachide", "sans poisson"];
@@ -509,7 +510,7 @@ export const foods: Food[] = [
   }
 ];
 
-export function generateMenu(entree: PlanInput): MenuResult {
+export function generateMenu(entree: PlanInput, foodBase: Food[] = foods): MenuResult {
   const normalized = normalizeInput(entree);
   const lignes: MenuLine[] = [];
 
@@ -517,7 +518,7 @@ export function generateMenu(entree: PlanInput): MenuResult {
     const selected: Food[] = [];
 
     (["energetique", "proteine", "fruit", "vegetal"] as FoodRole[]).forEach((role, roleIndex) => {
-      const candidates = filterFoods(normalized, role);
+      const candidates = filterFoods(normalized, role, foodBase);
       const food = pickFood(candidates, selected, jour + roleIndex);
       if (!food) {
         return;
@@ -594,16 +595,21 @@ export function createMenuLine(entree: PlanInput, jour: number, role: FoodRole, 
   };
 }
 
-export function getReplacementOptions(entree: PlanInput, line: MenuLine, allLines: MenuLine[]): Food[] {
+export function getReplacementOptions(
+  entree: PlanInput,
+  line: MenuLine,
+  allLines: MenuLine[],
+  foodBase: Food[] = foods
+): Food[] {
   const otherDayFoods = allLines
     .filter((item) => item.jour === line.jour && item.id !== line.id)
     .map((item) => item.aliment);
 
-  return filterFoods(entree, line.role).filter((food) => isCompatibleWithSelected(food, otherDayFoods));
+  return filterFoods(entree, line.role, foodBase).filter((food) => isCompatibleWithSelected(food, otherDayFoods));
 }
 
-export function filterFoods(entree: PlanInput, role?: FoodRole): Food[] {
-  return foods
+export function filterFoods(entree: PlanInput, role?: FoodRole, foodBase: Food[] = foods): Food[] {
+  return foodBase
     .filter((food) => {
       if (!food.actif) {
         return false;

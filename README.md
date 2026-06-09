@@ -11,7 +11,8 @@ Plateforme web d'aide a la planification alimentaire scolaire. L'application aid
 - Liste d'achats agregee.
 - Rapport de verification : proteine, fruit, energie, vegetal, compatibilite culinaire et budget.
 - Export CSV et impression PDF via le navigateur.
-- Espace administrateur de demonstration pour visualiser la base alimentaire et simuler l'import Excel/CSV.
+- Espace administrateur pour visualiser la base alimentaire et importer un fichier Excel/CSV.
+- Import reel d'un fichier Excel/CSV depuis l'onglet Admin, avec lecture de la feuille `Base_Aliments`.
 
 ## Stack
 
@@ -50,7 +51,30 @@ GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-Le MVP principal fonctionne sans base de donnees externe. `DATABASE_URL` et `GEMINI_API_KEY` sont optionnels pour les modules serveur herites et pour de futures explications IA persistantes.
+Le MVP principal fonctionne sans base de donnees externe. La base alimentaire importee est memorisee dans le navigateur de l'utilisateur. `DATABASE_URL` et `GEMINI_API_KEY` sont optionnels pour les modules serveur herites et pour de futures explications IA persistantes.
+
+## Import du fichier Excel de reference
+
+Dans l'application, ouvrir `Admin`, puis cliquer sur `Selectionner un fichier Excel ou CSV`.
+
+Le fichier attendu peut contenir plusieurs feuilles. L'application lit en priorite la feuille `Base_Aliments` avec les colonnes :
+
+- `Aliment`
+- `Groupe alimentaire`
+- `Saison`
+- `Unité achat`
+- `Prix estimé (FCFA)`
+- `Portion standard enfant`
+- `Unité portion`
+- `Rôle nutritionnel`
+- `Type protéine`
+- `Niveau de coût`
+- `Mode d’achat`
+- `Quantité par vente`
+- `Catégorie culinaire`
+- `Compatible avec`
+
+Apres import, les menus sont regeneres avec la base chargee. Le bouton `Restaurer la base demo` permet de revenir aux aliments de demonstration.
 
 ## Hebergement Vercel
 

@@ -35,7 +35,7 @@ import {
   rebuildMenuResult,
   roleLabels
 } from "@/lib/cantine-engine";
-import type { Constraint, FoodRole, MenuLine, PlanInput, Status } from "@/lib/cantine-engine";
+import type { Constraint, Food, FoodRole, MenuLine, PlanInput, Status } from "@/lib/cantine-engine";
 
 type Tab = "planification" | "menu" | "achats" | "rapport" | "admin";
 
@@ -43,6 +43,16 @@ type ReplacementNote = {
   titre: string;
   detail: string;
   statut: Status;
+};
+
+type FoodImportCache = {
+  fileName: string;
+  importedAt: string;
+  foods: Food[];
+};
+
+type ImportedFood = Food & {
+  rawCompatible: string;
 };
 
 const initialInput: PlanInput = {
@@ -53,6 +63,8 @@ const initialInput: PlanInput = {
   contraintes: ["sans porc"],
   saison: "Aucune"
 };
+
+const FOOD_CACHE_KEY = "cantine-intelligente-food-base-v1";
 
 const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: "planification", label: "Planification", icon: SlidersHorizontal },
@@ -66,7 +78,8 @@ const roleClasses: Record<FoodRole, string> = {
   energetique: "border-orange-200 bg-orange-50 text-orange-800",
   proteine: "border-emerald-200 bg-emerald-50 text-emerald-800",
   fruit: "border-sky-200 bg-sky-50 text-sky-800",
-  vegetal: "border-lime-200 bg-lime-50 text-lime-800"
+  vegetal: "border-lime-200 bg-lime-50 text-lime-800",
+  autre: "border-slate-200 bg-slate-50 text-slate-700"
 };
 
 const statusClasses: Record<Status, string> = {
@@ -78,11 +91,14 @@ const statusClasses: Record<Status, string> = {
 export function CantineApp() {
   const [input, setInput] = useState<PlanInput>(initialInput);
   const [result, setResult] = useState(() => generateMenu(initialInput));
+  const [foodBase, setFoodBase] = useState<Food[]>(foods);
+  const [foodSource, setFoodSource] = useState("Base locale de demonstration");
   const [activeTab, setActiveTab] = useState<Tab>("planification");
   const [replacementNote, setReplacementNote] = useState<ReplacementNote | undefined>();
   const [adminSearch, setAdminSearch] = useState("");
   const [adminRole, setAdminRole] = useState<FoodRole | "Tous">("Tous");
   const [importReport, setImportReport] = useState("Aucun fichier importe dans cette session.");
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     function syncHash() {
@@ -97,16 +113,39 @@ export function CantineApp() {
     return () => window.removeEventListener("hashchange", syncHash);
   }, []);
 
+  useEffect(() => {
+    try {
+      const cached = window.localStorage.getItem(FOOD_CACHE_KEY);
+      if (!cached) {
+        return;
+      }
+
+      const parsed = JSON.parse(cached) as FoodImportCache;
+      if (!Array.isArray(parsed.foods) || parsed.foods.length === 0) {
+        return;
+      }
+
+      setFoodBase(parsed.foods);
+      setFoodSource(`Base importee: ${parsed.fileName}`);
+      setImportReport(
+        `${parsed.fileName} charge depuis ce navigateur (${parsed.foods.filter((food) => food.actif).length} aliments utilisables).`
+      );
+      setResult(generateMenu(initialInput, parsed.foods));
+    } catch {
+      window.localStorage.removeItem(FOOD_CACHE_KEY);
+    }
+  }, []);
+
   const filteredFoods = useMemo(() => {
     const search = adminSearch.trim().toLowerCase();
-    return foods.filter((food) => {
+    return foodBase.filter((food) => {
       const matchesRole = adminRole === "Tous" || food.role === adminRole;
       const matchesSearch =
         search.length === 0 ||
         `${food.nom} ${food.groupeAlimentaire} ${food.categorieCulinaire}`.toLowerCase().includes(search);
       return matchesRole && matchesSearch;
     });
-  }, [adminRole, adminSearch]);
+  }, [adminRole, adminSearch, foodBase]);
 
   const budgetBarClass =
     result.statut === "Non conforme"
@@ -132,7 +171,7 @@ export function CantineApp() {
   }
 
   function regenerate() {
-    const nextResult = generateMenu(input);
+    const nextResult = generateMenu(input, foodBase);
     setResult(nextResult);
     setReplacementNote(undefined);
     setActiveTab("menu");
@@ -145,7 +184,7 @@ export function CantineApp() {
   }
 
   function replaceFood(line: MenuLine, foodId: string) {
-    const nextFood = foods.find((food) => food.id === foodId);
+    const nextFood = foodBase.find((food) => food.id === foodId);
     if (!nextFood || nextFood.id === line.alimentId) {
       return;
     }
@@ -196,18 +235,66 @@ export function CantineApp() {
     URL.revokeObjectURL(url);
   }
 
-  function handleImport(fileName: string | undefined) {
-    if (!fileName) {
+  async function handleImport(file: File | undefined) {
+    if (!file) {
       setImportReport("Aucun fichier selectionne.");
       return;
     }
 
-    const isSpreadsheet = /\.(xlsx|xls|csv)$/i.test(fileName);
-    setImportReport(
-      isSpreadsheet
-        ? `${fileName} pret pour validation: colonnes, types, valeurs manquantes et prix aberrants.`
-        : `${fileName} refuse: format attendu .xlsx, .xls ou .csv.`
-    );
+    const isSpreadsheet = /\.(xlsx|xls|csv)$/i.test(file.name);
+    if (!isSpreadsheet) {
+      setImportReport(`${file.name} refuse: format attendu .xlsx, .xls ou .csv.`);
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const importedFoods = await readFoodsFromSpreadsheet(file);
+      const usable = importedFoods.filter((food) => food.actif);
+      if (usable.filter((food) => food.role === "energetique").length === 0) {
+        throw new Error("aucun aliment energetique utilisable n'a ete trouve.");
+      }
+      if (usable.filter((food) => food.role === "proteine").length === 0) {
+        throw new Error("aucune proteine utilisable n'a ete trouvee.");
+      }
+      if (usable.filter((food) => food.role === "fruit").length === 0) {
+        throw new Error("aucun fruit utilisable n'a ete trouve.");
+      }
+      if (usable.filter((food) => food.role === "vegetal").length === 0) {
+        throw new Error("aucun legume utilisable n'a ete trouve.");
+      }
+
+      const importedAt = new Date().toISOString();
+      window.localStorage.setItem(
+        FOOD_CACHE_KEY,
+        JSON.stringify({
+          fileName: file.name,
+          importedAt,
+          foods: importedFoods
+        } satisfies FoodImportCache)
+      );
+
+      setFoodBase(importedFoods);
+      setFoodSource(`Base importee: ${file.name}`);
+      setImportReport(
+        `${file.name} importe: ${usable.length} aliments utilisables sur ${importedFoods.length} lignes de Base_Aliments.`
+      );
+      setResult(generateMenu(input, importedFoods));
+      setReplacementNote(undefined);
+    } catch (error) {
+      setImportReport(`Import impossible: ${error instanceof Error ? error.message : "format non reconnu."}`);
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function restoreDemoBase() {
+    window.localStorage.removeItem(FOOD_CACHE_KEY);
+    setFoodBase(foods);
+    setFoodSource("Base locale de demonstration");
+    setImportReport("Base de demonstration restauree.");
+    setResult(generateMenu(input, foods));
+    setReplacementNote(undefined);
   }
 
   return (
@@ -412,7 +499,7 @@ export function CantineApp() {
                 className="bouton-secondaire"
                 onClick={() => {
                   setInput(initialInput);
-                  const nextResult = generateMenu(initialInput);
+                  const nextResult = generateMenu(initialInput, foodBase);
                   setResult(nextResult);
                   setReplacementNote(undefined);
                 }}
@@ -500,7 +587,7 @@ export function CantineApp() {
 
                 <div className="divide-y divide-slate-100">
                   {day.lignes.map((line) => {
-                    const options = getReplacementOptions(result.entree, line, result.lignes);
+                    const options = getReplacementOptions(result.entree, line, result.lignes, foodBase);
                     return (
                       <div key={line.id} className="grid gap-3 px-4 py-3 md:grid-cols-[120px_minmax(0,1fr)_120px_110px] md:items-center">
                         <span className={`inline-flex w-fit rounded-lg border px-2.5 py-1 text-xs font-black ${roleClasses[line.role]}`}>
@@ -631,28 +718,49 @@ export function CantineApp() {
       {activeTab === "admin" ? (
         <section id="admin" className="space-y-5">
           <div className="grid gap-3 md:grid-cols-3">
-            <MetricCard icon={FileSpreadsheet} label="Aliments actifs" value={String(foods.length)} detail="Base locale de demonstration" tone="Conforme" />
-            <MetricCard icon={Upload} label="Dernier import" value="Session locale" detail={importReport} tone="Attention" />
+            <MetricCard
+              icon={FileSpreadsheet}
+              label="Aliments actifs"
+              value={String(foodBase.filter((food) => food.actif).length)}
+              detail={foodSource}
+              tone="Conforme"
+            />
+            <MetricCard
+              icon={Upload}
+              label="Dernier import"
+              value={foodSource.startsWith("Base importee") ? "Import OK" : "Session locale"}
+              detail={importReport}
+              tone="Attention"
+            />
             <MetricCard icon={ShieldCheck} label="Roles" value="Admin / Utilisateur" detail="RBAC prevu sur les endpoints" tone="Conforme" />
           </div>
 
           <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-xl font-black text-slate-950">Import alimentaire</h2>
-              <p className="mt-1 text-sm text-slate-500">Validation attendue: en-tetes, types, valeurs manquantes.</p>
+              <p className="mt-1 text-sm text-slate-500">Feuille lue en priorite: Base_Aliments.</p>
               <label className="mt-5 flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-sm font-bold text-slate-600 transition hover:border-[#1B6CA8] hover:bg-blue-50">
                 <Upload size={24} aria-hidden="true" />
-                <span className="mt-2">Selectionner un fichier Excel ou CSV</span>
+                <span className="mt-2">{importing ? "Import en cours..." : "Selectionner un fichier Excel ou CSV"}</span>
                 <input
                   className="sr-only"
                   type="file"
                   accept=".xlsx,.xls,.csv"
-                  onChange={(event) => handleImport(event.target.files?.[0]?.name)}
+                  disabled={importing}
+                  onChange={(event) => {
+                    handleImport(event.target.files?.[0]).catch(() => {
+                      setImportReport("Import impossible: erreur inattendue.");
+                    });
+                    event.currentTarget.value = "";
+                  }}
                 />
               </label>
               <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-600">
                 {importReport}
               </div>
+              <button type="button" onClick={restoreDemoBase} className="bouton-secondaire mt-4 w-full">
+                Restaurer la base demo
+              </button>
             </section>
 
             <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -677,6 +785,7 @@ export function CantineApp() {
                   <option value="proteine">Proteine</option>
                   <option value="fruit">Fruit</option>
                   <option value="vegetal">Vegetal</option>
+                  <option value="autre">Autre</option>
                 </select>
               </div>
 
@@ -760,6 +869,259 @@ function StatusBadge({ status, compact = false }: { status: Status; compact?: bo
       {compact ? status.replace("Non conforme", "NC") : status}
     </span>
   );
+}
+
+async function readFoodsFromSpreadsheet(file: File): Promise<Food[]> {
+  const XLSX = await import("xlsx");
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(data, { type: "array" });
+  const sheetName =
+    workbook.SheetNames.find((name) => normalizeText(name) === "base aliments") ?? workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) {
+    throw new Error("aucune feuille lisible dans le fichier.");
+  }
+
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+  if (rows.length === 0) {
+    throw new Error("la feuille Base_Aliments est vide.");
+  }
+
+  const ids = new Map<string, number>();
+  const imported = rows
+    .map((row) => normalizeImportedFood(row, ids))
+    .filter((food): food is ImportedFood => Boolean(food));
+
+  if (imported.length === 0) {
+    throw new Error("aucune ligne alimentaire valide n'a ete trouvee.");
+  }
+
+  const coreIds = imported.filter((food) => food.actif).map((food) => food.id);
+  const byId = new Map(imported.map((food) => [food.id, food]));
+
+  return imported.map((food) => {
+    const explicitCompat = splitList(food.rawCompatible)
+      .map((name) => findCompatibleId(name, byId))
+      .filter((id): id is string => Boolean(id));
+
+    const compatibleAvec = Array.from(new Set([...explicitCompat, ...coreIds].filter((id) => id !== food.id)));
+    const { rawCompatible: _rawCompatible, ...cleanFood } = food;
+    return {
+      ...cleanFood,
+      compatibleAvec
+    };
+  });
+}
+
+function normalizeImportedFood(row: Record<string, unknown>, ids: Map<string, number>): ImportedFood | undefined {
+  const nom = textCell(row, ["aliment"]);
+  if (!nom) {
+    return undefined;
+  }
+
+  const groupeAlimentaire = textCell(row, ["groupe alimentaire"]) || "Non classe";
+  const roleText = textCell(row, ["role nutritionnel", "rôle nutritionnel"]);
+  const role = mapFoodRole(groupeAlimentaire, roleText);
+  const prixEstime = numberCell(row, ["prix estime fcfa", "prix estime", "prix estimé fcfa", "prix estimé"]);
+  const portionEnfant = numberCell(row, ["portion standard enfant", "portion par enfant", "portion enfant"]);
+  const uniteAchat = textCell(row, ["unite achat", "unité achat"]) || "unite";
+  const unitePortionText = textCell(row, ["unite portion", "unité portion"]) || uniteAchat;
+  const unitePortion = mapPortionUnit(unitePortionText);
+  const quantiteParVente = parseSaleQuantity(
+    textCell(row, ["quantite par vente", "quantité par vente"]),
+    uniteAchat,
+    unitePortion
+  );
+  const typeProteine = mapProteinType(textCell(row, ["type proteine", "type protéine"]), nom, groupeAlimentaire);
+  const id = uniqueSlug(nom, ids);
+  const prioriteCout = mapCostPriority(textCell(row, ["niveau de cout", "niveau de coût"]));
+  const searchable = normalizeText(`${nom} ${groupeAlimentaire} ${roleText} ${typeProteine ?? ""}`);
+  const tags = [
+    searchable.includes("porc") ? "porc" : "",
+    searchable.includes("poisson") ? "poisson" : "",
+    searchable.includes("arachide") ? "arachide" : "",
+    typeProteine === "Vegetale" ? "vegetarien" : ""
+  ].filter(Boolean);
+
+  return {
+    id,
+    nom,
+    groupeAlimentaire,
+    role,
+    saison: mapSeason(textCell(row, ["saison"])),
+    uniteAchat,
+    unitePortion,
+    prixEstime,
+    portionEnfant,
+    minimumEnfant: unitePortion === "piece" ? Math.max(0.5, portionEnfant) : Math.max(1, Math.round(portionEnfant * 0.75)),
+    modeVente: textCell(row, ["mode achat", "mode dachat", "mode d’achat"]) || uniteAchat,
+    quantiteParVente,
+    prioriteCout,
+    typeProteine,
+    categorieCulinaire: textCell(row, ["categorie culinaire", "catégorie culinaire"]) || groupeAlimentaire,
+    compatibleAvec: [],
+    complementProteique: undefined,
+    actif: role !== "autre" && prixEstime > 0 && portionEnfant > 0,
+    tags,
+    rawCompatible: textCell(row, ["compatible avec"])
+  };
+}
+
+function textCell(row: Record<string, unknown>, labels: string[]): string {
+  const entry = Object.entries(row).find(([key]) => {
+    const normalizedKey = normalizeText(key);
+    return labels.some((label) => normalizedKey === normalizeText(label) || normalizedKey.includes(normalizeText(label)));
+  });
+
+  const value = entry?.[1];
+  return value === undefined || value === null ? "" : String(value).trim();
+}
+
+function numberCell(row: Record<string, unknown>, labels: string[]): number {
+  return parseNumber(textCell(row, labels));
+}
+
+function parseNumber(value: string): number {
+  const normalized = value.replace(/\s/g, "").replace(",", ".");
+  const match = normalized.match(/-?\d+(\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+}
+
+function parseSaleQuantity(value: string, uniteAchat: string, unitePortion: "g" | "piece"): number {
+  const quantity = parseNumber(value) || 1;
+  const text = normalizeText(`${value} ${uniteAchat}`);
+
+  if (text.includes("kg") || (unitePortion === "g" && normalizeText(uniteAchat).includes("kg"))) {
+    return quantity * 1000;
+  }
+
+  if (text.includes("g") && !text.includes("kg")) {
+    return quantity;
+  }
+
+  return quantity;
+}
+
+function mapFoodRole(group: string, roleText: string): FoodRole {
+  const normalizedGroup = normalizeText(group);
+  const normalizedRole = normalizeText(roleText);
+
+  if (normalizedGroup.includes("fruit")) {
+    return "fruit";
+  }
+  if (normalizedGroup.includes("proteine")) {
+    return "proteine";
+  }
+  if (normalizedGroup.includes("energetique")) {
+    return "energetique";
+  }
+  if (normalizedGroup.includes("legume")) {
+    return "vegetal";
+  }
+  if (normalizedRole.includes("fruit")) {
+    return "fruit";
+  }
+  if (normalizedRole.includes("proteine")) {
+    return "proteine";
+  }
+  if (normalizedRole.includes("energie") || normalizedRole.includes("glucide")) {
+    return "energetique";
+  }
+  if (normalizedRole.includes("legume") || normalizedRole.includes("feuille")) {
+    return "vegetal";
+  }
+
+  return "autre";
+}
+
+function mapSeason(value: string): Food["saison"] {
+  const normalized = normalizeText(value);
+  if (normalized.includes("seche")) {
+    return "Seche";
+  }
+  if (normalized.includes("pluie")) {
+    return "Pluies";
+  }
+  return "Toute saison";
+}
+
+function mapPortionUnit(value: string): "g" | "piece" {
+  const normalized = normalizeText(value);
+  return normalized.includes("g") && !normalized.includes("piece") ? "g" : "piece";
+}
+
+function mapProteinType(value: string, name: string, group: string): Food["typeProteine"] {
+  const normalized = normalizeText(`${value} ${name} ${group}`);
+  if (normalized.includes("vegetale") || normalized.includes("soja") || normalized.includes("haricot")) {
+    return "Vegetale";
+  }
+  if (
+    normalized.includes("animale") ||
+    normalized.includes("poisson") ||
+    normalized.includes("poulet") ||
+    normalized.includes("viande") ||
+    normalized.includes("oeuf") ||
+    normalized.includes("lait")
+  ) {
+    return "Animale";
+  }
+  return null;
+}
+
+function mapCostPriority(value: string): number {
+  const normalized = normalizeText(value);
+  if (normalized.includes("faible")) {
+    return 1;
+  }
+  if (normalized.includes("moyen")) {
+    return 3;
+  }
+  if (normalized.includes("eleve")) {
+    return 5;
+  }
+  return Math.min(5, Math.max(1, parseNumber(value) || 3));
+}
+
+function findCompatibleId(name: string, foodsById: Map<string, ImportedFood>): string | undefined {
+  const slug = slugify(name);
+  if (foodsById.has(slug)) {
+    return slug;
+  }
+
+  return Array.from(foodsById.values()).find((food) => {
+    const foodName = normalizeText(food.nom);
+    const compatibleName = normalizeText(name);
+    return foodName.includes(compatibleName) || compatibleName.includes(foodName);
+  })?.id;
+}
+
+function splitList(value: string): string[] {
+  return value
+    .split(/[;,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function uniqueSlug(value: string, ids: Map<string, number>): string {
+  const base = slugify(value);
+  const count = ids.get(base) ?? 0;
+  ids.set(base, count + 1);
+  return count === 0 ? base : `${base}-${count + 1}`;
+}
+
+function slugify(value: string): string {
+  return normalizeText(value).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "aliment";
+}
+
+function normalizeText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "")
+    .replace(/[_()]/g, " ")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 function csvCell(value: string | number): string {
