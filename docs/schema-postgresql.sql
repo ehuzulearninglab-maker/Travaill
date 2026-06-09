@@ -67,3 +67,10 @@ create table if not exists parametres_app (
 insert into parametres_app (id, gemini_model, date_modification)
 values ('global', 'gemini-2.5-flash-lite', now())
 on conflict (id) do nothing;
+
+create table if not exists cantine_references (
+  id text primary key,
+  source_name text not null,
+  imported_at timestamptz not null default now(),
+  data jsonb not null
+);

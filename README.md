@@ -5,14 +5,14 @@ Plateforme web d'aide a la planification alimentaire scolaire. L'application aid
 ## Fonctionnalites MVP
 
 - Formulaire de planification : nombre d'enfants, tranche d'age, budget, duree, saison et contraintes alimentaires.
-- Generation automatique d'un menu par jour avec energie, proteine, fruit et vegetal.
+- Generation automatique d'un menu par jour a partir de la feuille `Plats_Validés`.
 - Calcul des portions par enfant, quantites totales, quantites d'achat arrondies et couts.
-- Remplacement interactif d'un aliment avec recalcul immediat.
 - Liste d'achats agregee.
-- Rapport de verification : proteine, fruit, energie, vegetal, compatibilite culinaire et budget.
+- Prix de reference visible dans les achats : prix par kg, lot, piece ou unite d'achat.
+- Rapport de verification : plats valides, proteine visible, fruit, base energetique, apport vegetal et budget.
 - Export CSV et impression PDF via le navigateur.
-- Espace administrateur pour visualiser la base alimentaire et importer un fichier Excel/CSV.
-- Import reel d'un fichier Excel/CSV depuis l'onglet Admin, avec lecture de la feuille `Base_Aliments`.
+- Espace administrateur separe sur `/admin-cantine`, protege par mot de passe.
+- Import Excel serveur avec lecture de `Base_Aliments` et `Plats_Validés`.
 
 ## Stack
 
@@ -47,15 +47,18 @@ NEXT_PUBLIC_APP_NAME=Cantine Intelligente
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 AUTH_SECRET=changez-cette-valeur-en-production
 DATABASE_URL=
+CANTINE_ADMIN_PASSWORD=
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-Le MVP principal fonctionne sans base de donnees externe. La base alimentaire importee est memorisee dans le navigateur de l'utilisateur. `DATABASE_URL` et `GEMINI_API_KEY` sont optionnels pour les modules serveur herites et pour de futures explications IA persistantes.
+L'application utilisateur fonctionne sans API externe et sans import a chaque utilisation : la reference `CANTINE_INTELLIGENTE_GPT.xlsx` est incluse dans le site. Les routes API internes Next.js servent a l'administration et a l'import.
+
+Pour conserver durablement les futurs imports admin en production, configurez `DATABASE_URL` avec PostgreSQL/Supabase. Sans base, la reference incluse reste disponible, mais un nouvel import realise depuis Vercel peut etre temporaire.
 
 ## Import du fichier Excel de reference
 
-Dans l'application, ouvrir `Admin`, puis cliquer sur `Selectionner un fichier Excel ou CSV`.
+Ouvrir `/admin-cantine`, se connecter avec `CANTINE_ADMIN_PASSWORD`, puis cliquer sur `Selectionner un fichier Excel`.
 
 Le fichier attendu peut contenir plusieurs feuilles. L'application lit en priorite la feuille `Base_Aliments` avec les colonnes :
 
@@ -74,7 +77,7 @@ Le fichier attendu peut contenir plusieurs feuilles. L'application lit en priori
 - `Catégorie culinaire`
 - `Compatible avec`
 
-Apres import, les menus sont regeneres avec la base chargee. Le bouton `Restaurer la base demo` permet de revenir aux aliments de demonstration.
+La generation lit aussi `Plats_Validés` et refuse de creer des combinaisons libres hors reference. Apres import, la nouvelle base devient active pour les utilisateurs.
 
 ## Hebergement Vercel
 
@@ -90,6 +93,7 @@ Variables minimales conseillees dans Vercel :
 NEXT_PUBLIC_APP_NAME=Cantine Intelligente
 NEXT_PUBLIC_APP_URL=https://votre-domaine.vercel.app
 AUTH_SECRET=une-valeur-longue-et-secrete
+CANTINE_ADMIN_PASSWORD=un-mot-de-passe-admin-long
 IMPORT_SECRET_KEY=une-cle-longue
 ```
 
@@ -108,6 +112,9 @@ Les menus generes par Cantine Intelligente sont des propositions d'aide a la dec
 ## Structure principale
 
 - `src/components/cantine-app.tsx` : interface applicative.
-- `src/lib/cantine-engine.ts` : base alimentaire de demonstration, moteur de selection, calculs et verification.
+- `src/components/cantine-admin-client.tsx` : interface admin separee.
+- `src/lib/cantine-engine.ts` : normalisation de la reference, selection des plats valides, calculs et verification.
+- `src/lib/cantine-storage.ts` : lecture/ecriture de la reference active.
 - `src/app/page.tsx` : page d'accueil de l'application.
+- `src/app/admin-cantine/page.tsx` : page d'administration protegee.
 - `vercel.json` : configuration d'hebergement Vercel.
