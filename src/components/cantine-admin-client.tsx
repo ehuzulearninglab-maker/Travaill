@@ -8,9 +8,12 @@ import {
   Database,
   FileSpreadsheet,
   Home,
+  KeyRound,
   LogOut,
+  Save,
   Search,
   ShieldCheck,
+  Trash2,
   Upload,
   type LucideIcon
 } from "lucide-react";
@@ -22,6 +25,23 @@ type ApiReferenceResponse = {
   succes?: boolean;
   reference?: CantineReference;
   status?: CantineStorageStatus;
+  message?: string;
+};
+
+type GeminiAdminStatus = {
+  actif: boolean;
+  modele: string;
+  source: "admin" | "environnement" | "absent";
+  apercu_cle?: string;
+  date_modification?: string;
+  stockage?: "postgres" | "temporaire";
+  stockage_persistant?: boolean;
+  avertissement?: string;
+};
+
+type ApiAiResponse = {
+  succes?: boolean;
+  parametres?: GeminiAdminStatus;
   message?: string;
 };
 
@@ -37,12 +57,14 @@ export function CantineAdminClient({
   authenticated,
   passwordConfigured,
   initialReference,
-  initialStatus
+  initialStatus,
+  initialAiStatus
 }: {
   authenticated: boolean;
   passwordConfigured: boolean;
   initialReference: CantineReference;
   initialStatus: CantineStorageStatus;
+  initialAiStatus?: GeminiAdminStatus;
 }) {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(authenticated);
@@ -51,6 +73,11 @@ export function CantineAdminClient({
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiStatus, setAiStatus] = useState<GeminiAdminStatus | undefined>(initialAiStatus);
+  const [apiKey, setApiKey] = useState("");
+  const [aiModel, setAiModel] = useState(initialAiStatus?.modele || "gemini-2.5-flash-lite");
+  const [aiMessage, setAiMessage] = useState<string | undefined>();
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<FoodRole | "Tous">("Tous");
 
@@ -85,6 +112,7 @@ export function CantineAdminClient({
 
     setPassword("");
     setIsAuthenticated(true);
+    void refreshAiStatus();
     router.refresh();
   }
 
@@ -92,6 +120,45 @@ export function CantineAdminClient({
     await fetch("/api/cantine/admin/logout", { method: "POST" });
     setIsAuthenticated(false);
     router.refresh();
+  }
+
+  async function refreshAiStatus() {
+    const response = await fetch("/api/cantine/admin/ai");
+    if (!response.ok) {
+      return;
+    }
+    const data = (await response.json().catch(() => ({}))) as ApiAiResponse;
+    if (data.parametres) {
+      setAiStatus(data.parametres);
+      setAiModel(data.parametres.modele);
+    }
+  }
+
+  async function saveAiSettings(clearKey = false) {
+    setAiBusy(true);
+    setAiMessage(undefined);
+
+    const response = await fetch("/api/cantine/admin/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        gemini_model: aiModel,
+        effacer_cle: clearKey,
+        ...(clearKey || !apiKey.trim() ? {} : { gemini_api_key: apiKey.trim() })
+      })
+    });
+    const data = (await response.json().catch(() => ({}))) as ApiAiResponse;
+    setAiBusy(false);
+
+    if (!response.ok || !data.parametres) {
+      setAiMessage(data.message || "Enregistrement impossible.");
+      return;
+    }
+
+    setApiKey("");
+    setAiStatus(data.parametres);
+    setAiModel(data.parametres.modele);
+    setAiMessage(data.message || (clearKey ? "Cle API retiree." : "Cle API enregistree."));
   }
 
   async function uploadReference(file: File | undefined) {
@@ -235,6 +302,7 @@ export function CantineAdminClient({
       ) : null}
 
       <section className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="space-y-5">
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-xl font-black text-slate-950">Mettre a jour le fichier</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">
@@ -269,6 +337,70 @@ export function CantineAdminClient({
               <span className="font-bold text-slate-800">Dernier import :</span> {formatDate(reference.importedAt)}
             </p>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black text-slate-950">Cle API IA</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Optionnel. Les calculs principaux restent controles par le fichier Excel et les regles metier.
+              </p>
+            </div>
+            <span
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border ${
+                aiStatus?.actif ? "border-green-200 bg-green-50 text-green-700" : "border-amber-200 bg-amber-50 text-amber-700"
+              }`}
+            >
+              <KeyRound size={18} aria-hidden="true" />
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-slate-700">Nouvelle cle API</span>
+              <input
+                className="champ"
+                type="password"
+                value={apiKey}
+                placeholder={aiStatus?.apercu_cle || "AIza..."}
+                onChange={(event) => setApiKey(event.target.value)}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-slate-700">Modele</span>
+              <input className="champ" value={aiModel} onChange={(event) => setAiModel(event.target.value)} />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="bouton-primaire" disabled={aiBusy} onClick={() => saveAiSettings(false)}>
+                <Save size={16} aria-hidden="true" />
+                Enregistrer
+              </button>
+              <button type="button" className="bouton-secondaire" disabled={aiBusy} onClick={() => saveAiSettings(true)}>
+                <Trash2 size={16} aria-hidden="true" />
+                Retirer
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+            <p>
+              <span className="font-bold text-slate-800">Statut :</span>{" "}
+              {aiStatus?.actif ? "cle active" : "aucune cle active"}
+            </p>
+            <p>
+              <span className="font-bold text-slate-800">Source :</span> {aiStatus?.source || "absent"}
+            </p>
+          </div>
+
+          {aiStatus?.avertissement ? (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
+              {aiStatus.avertissement}
+            </div>
+          ) : null}
+
+          {aiMessage ? <p className="mt-3 text-sm font-bold text-[#1B6CA8]">{aiMessage}</p> : null}
+        </div>
         </div>
 
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">

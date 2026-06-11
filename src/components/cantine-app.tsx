@@ -65,8 +65,12 @@ const statusClasses: Record<Status, string> = {
 
 export function CantineApp({ initialReference }: { initialReference: CantineReference }) {
   const [input, setInput] = useState<PlanInput>(initialInput);
+  const [selectedDishes, setSelectedDishes] = useState<Record<number, string>>({});
   const [activeTab, setActiveTab] = useState<Tab>("planification");
-  const result = useMemo(() => generateMenu(input, initialReference), [input, initialReference]);
+  const result = useMemo(
+    () => generateMenu({ ...input, platsChoisis: selectedDishes }, initialReference),
+    [input, initialReference, selectedDishes]
+  );
   const budgetBarClass =
     result.statut === "Non conforme"
       ? "bg-red-600"
@@ -110,6 +114,13 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
 
   function generateAndOpenMenu() {
     openTab("menu");
+  }
+
+  function selectDishForDay(jour: number, dishId: string) {
+    setSelectedDishes((current) => ({
+      ...current,
+      [jour]: dishId
+    }));
   }
 
   function downloadCsv() {
@@ -177,39 +188,6 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             </button>
           </div>
         </div>
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4" aria-label="Indicateurs principaux">
-        <MetricCard
-          icon={CheckCircle2}
-          label="Conformite"
-          value={result.statut}
-          detail={`${result.verifications.filter((check) => check.statut === "Conforme").length}/${
-            result.verifications.length
-          } controles OK`}
-          tone={result.statut}
-        />
-        <MetricCard
-          icon={WalletCards}
-          label="Budget utilise"
-          value={`${result.utilisationBudget}%`}
-          detail={`${formatCurrency(result.coutTotal)} sur ${formatCurrency(result.entree.budgetTotal)}`}
-          tone={result.ecartBudget >= 0 ? "Conforme" : "Non conforme"}
-        />
-        <MetricCard
-          icon={Users}
-          label="Effectif"
-          value={`${result.entree.nombreEnfants} enfants`}
-          detail={`${result.entree.trancheAge}, ${result.entree.dureeJours} jours`}
-          tone="Conforme"
-        />
-        <MetricCard
-          icon={BarChart3}
-          label="Cout par enfant"
-          value={formatCurrency(result.coutParEnfant)}
-          detail={result.ecartBudget >= 0 ? `Marge ${formatCurrency(result.ecartBudget)}` : `Depassement ${formatCurrency(Math.abs(result.ecartBudget))}`}
-          tone={result.ecartBudget >= 0 ? "Conforme" : "Attention"}
-        />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
@@ -348,6 +326,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                 className="bouton-secondaire"
                 onClick={() => {
                   setInput(initialInput);
+                  setSelectedDishes({});
                   openTab("planification");
                 }}
               >
@@ -429,10 +408,26 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             {result.jours.map((day) => (
               <article key={day.jour} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                 <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-black text-slate-500">Jour {day.jour}</p>
                     <h3 className="mt-1 text-xl font-black text-slate-950">{day.plat.nom}</h3>
                     <p className="mt-1 text-sm font-semibold text-slate-600">{formatCurrency(day.coutJournalier)}</p>
+                    <label className="mt-4 block max-w-xl">
+                      <span className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                        Changer le menu du jour
+                      </span>
+                      <select
+                        className="champ"
+                        value={day.plat.id}
+                        onChange={(event) => selectDishForDay(day.jour, event.target.value)}
+                      >
+                        {result.menusDisponibles.map((menu) => (
+                          <option key={menu.id} value={menu.id}>
+                            {menu.nom} - {formatCurrency(menu.coutJournalier)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                   <StatusBadge status={day.statut} compact />
                 </div>
@@ -524,8 +519,46 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
       ) : null}
 
       {activeTab === "rapport" ? (
-        <section id="rapport" className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <section id="rapport" className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4" aria-label="Indicateurs principaux">
+            <MetricCard
+              icon={CheckCircle2}
+              label="Conformite"
+              value={result.statut}
+              detail={`${result.verifications.filter((check) => check.statut === "Conforme").length}/${
+                result.verifications.length
+              } controles OK`}
+              tone={result.statut}
+            />
+            <MetricCard
+              icon={WalletCards}
+              label="Budget utilise"
+              value={`${result.utilisationBudget}%`}
+              detail={`${formatCurrency(result.coutTotal)} sur ${formatCurrency(result.entree.budgetTotal)}`}
+              tone={result.ecartBudget >= 0 ? "Conforme" : "Non conforme"}
+            />
+            <MetricCard
+              icon={Users}
+              label="Effectif"
+              value={`${result.entree.nombreEnfants} enfants`}
+              detail={`${result.entree.trancheAge}, ${result.entree.dureeJours} jours`}
+              tone="Conforme"
+            />
+            <MetricCard
+              icon={BarChart3}
+              label="Cout par enfant"
+              value={formatCurrency(result.coutParEnfant)}
+              detail={
+                result.ecartBudget >= 0
+                  ? `Marge ${formatCurrency(result.ecartBudget)}`
+                  : `Depassement ${formatCurrency(Math.abs(result.ecartBudget))}`
+              }
+              tone={result.ecartBudget >= 0 ? "Conforme" : "Attention"}
+            />
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 p-5">
               <h2 className="text-2xl font-black text-slate-950">Rapport de verification</h2>
               <p className="mt-1 text-sm text-slate-500">Regles metier appliquees au menu courant.</p>
@@ -542,9 +575,9 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                 </div>
               ))}
             </div>
-          </div>
+            </div>
 
-          <aside className="space-y-5">
+            <aside className="space-y-5">
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-3">
                 <Leaf className="text-[#2E8B57]" size={22} aria-hidden="true" />
@@ -573,7 +606,8 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                 ))}
               </ul>
             </div>
-          </aside>
+            </aside>
+          </div>
         </section>
       ) : null}
     </div>

@@ -9,10 +9,12 @@ Plateforme web d'aide a la planification alimentaire scolaire. L'application aid
 - Calcul des portions par enfant, quantites totales, quantites d'achat arrondies et couts.
 - Liste d'achats agregee.
 - Prix de reference visible dans les achats : prix par kg, lot, piece ou unite d'achat.
+- Changement manuel d'un menu par jour parmi les plats valides disponibles, avec recalcul immediat.
 - Rapport de verification : plats valides, proteine visible, fruit, base energetique, apport vegetal et budget.
 - Export CSV et impression PDF via le navigateur.
 - Espace administrateur separe sur `/admin-cantine`, protege par mot de passe.
 - Import Excel serveur avec lecture de `Base_Aliments` et `Plats_Validés`.
+- Saisie admin d'une cle API IA optionnelle pour les futurs controles assistes.
 
 ## Stack
 

@@ -16,6 +16,7 @@ export type PlanInput = {
   dureeJours: number;
   contraintes: Constraint[];
   saison: Season;
+  platsChoisis?: Record<number, string>;
 };
 
 export type RawCantineReference = {
@@ -120,11 +121,19 @@ export type ShoppingItem = {
   coutTotal: number;
 };
 
+export type MenuChoice = {
+  id: string;
+  nom: string;
+  coutJournalier: number;
+  budgetConseille: string;
+};
+
 export type MenuResult = {
   entree: PlanInput;
   jours: DayMenu[];
   lignes: MenuLine[];
   listeAchats: ShoppingItem[];
+  menusDisponibles: MenuChoice[];
   verifications: VerificationCheck[];
   statut: Status;
   coutTotal: number;
@@ -224,10 +233,15 @@ export function generateMenu(entree: PlanInput, reference: CantineReference = de
     });
   }
 
-  return rebuildMenuResult(normalized, jours, reference);
+  return rebuildMenuResult(normalized, jours, reference, buildMenuChoices(candidates));
 }
 
-export function rebuildMenuResult(entree: PlanInput, jours: DayMenu[], reference = defaultCantineReference): MenuResult {
+export function rebuildMenuResult(
+  entree: PlanInput,
+  jours: DayMenu[],
+  reference = defaultCantineReference,
+  menusDisponibles: MenuChoice[] = []
+): MenuResult {
   const normalized = normalizeInput(entree);
   const lignes = jours.flatMap((jour) => jour.lignes);
   const listeAchats = buildShoppingList(lignes);
@@ -241,6 +255,7 @@ export function rebuildMenuResult(entree: PlanInput, jours: DayMenu[], reference
     jours,
     lignes,
     listeAchats,
+    menusDisponibles,
     verifications,
     statut,
     coutTotal,
@@ -411,9 +426,9 @@ function createMenuLine(
   aliment: Food
 ): Omit<MenuLine, "id" | "jour"> {
   const multiplier = ageMultipliers[entree.trancheAge] ?? 1;
-  const basePortion =
-    aliment.unitePortion === "piece" ? aliment.portionEnfant : Math.round((aliment.portionEnfant * multiplier) / 5) * 5;
-  const quantiteParEnfant = Math.max(aliment.minimumEnfant, basePortion);
+  const basePortion = portionForChild(aliment, multiplier);
+  const quantiteParEnfant =
+    aliment.role === "fruit" && aliment.unitePortion === "piece" ? 1 : Math.max(aliment.minimumEnfant, basePortion);
   const quantiteTotale = roundQuantity(quantiteParEnfant * entree.nombreEnfants);
   const quantiteAchat = Math.ceil(quantiteTotale / aliment.quantiteParVente) * aliment.quantiteParVente;
   const surplus = roundQuantity(quantiteAchat - quantiteTotale);
@@ -440,10 +455,37 @@ function pickDishForDay(
   jour: number,
   entree: PlanInput
 ) {
+  const selectedDishId = entree.platsChoisis?.[jour];
+  const selected = selectedDishId ? candidates.find((candidate) => candidate.dish.id === selectedDishId) : undefined;
+  if (selected) {
+    return selected;
+  }
+
   const budgetParRepas = entree.budgetTotal / Math.max(1, entree.dureeJours);
   const affordable = candidates.filter((candidate) => candidate.cout <= budgetParRepas);
   const pool = affordable.length > 0 ? affordable : candidates;
   return pool[(jour - 1) % pool.length];
+}
+
+function buildMenuChoices(
+  candidates: Array<{ dish: ValidatedDish; cout: number }>
+): MenuChoice[] {
+  return candidates.map((candidate) => ({
+    id: candidate.dish.id,
+    nom: candidate.dish.nom,
+    coutJournalier: candidate.cout,
+    budgetConseille: candidate.dish.budgetConseille
+  }));
+}
+
+function portionForChild(aliment: Food, multiplier: number): number {
+  if (aliment.role === "fruit" && aliment.unitePortion === "piece") {
+    return 1;
+  }
+  if (aliment.unitePortion === "piece") {
+    return aliment.portionEnfant;
+  }
+  return Math.round((aliment.portionEnfant * multiplier) / 5) * 5;
 }
 
 function hasRequiredDishLines(lignes: Omit<MenuLine, "id" | "jour">[]): boolean {
