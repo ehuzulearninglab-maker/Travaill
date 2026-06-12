@@ -507,7 +507,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                     <td className="px-5 py-3 font-bold text-slate-700">{formatUnitPrice(item.aliment)}</td>
                     <td className="px-5 py-3 text-slate-600">
                       <span className="font-bold text-slate-700">{item.aliment.uniteAchat}</span>
-                      <span className="block text-xs text-slate-500">{item.aliment.quantiteParVenteLabel}</span>
+                      <span className="block text-xs text-slate-500">Contenu : {item.aliment.quantiteParVenteLabel}</span>
                     </td>
                     <td className="px-5 py-3 font-black text-slate-950">{formatCurrency(item.coutTotal)}</td>
                   </tr>
