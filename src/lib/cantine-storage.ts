@@ -56,6 +56,21 @@ function usePostgres(): boolean {
   return Boolean(databaseConnectionString()) && !globalForCantine.cantinePostgresDisabled;
 }
 
+function postgresConnectionStringForPool(): string | undefined {
+  const connectionString = databaseConnectionString();
+  if (!connectionString || process.env.PGSSLMODE === "disable") {
+    return connectionString;
+  }
+
+  try {
+    const url = new URL(connectionString);
+    ["sslmode", "sslcert", "sslkey", "sslrootcert"].forEach((param) => url.searchParams.delete(param));
+    return url.toString();
+  } catch {
+    return connectionString;
+  }
+}
+
 function isHostedProduction(): boolean {
   return Boolean(process.env.VERCEL);
 }
@@ -83,7 +98,7 @@ async function getPool(): Promise<PgPool> {
 
   const { Pool } = await import("pg");
   globalForCantine.cantinePool = new Pool({
-    connectionString: databaseConnectionString(),
+    connectionString: postgresConnectionStringForPool(),
     ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
   });
   return globalForCantine.cantinePool;

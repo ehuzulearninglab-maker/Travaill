@@ -59,6 +59,21 @@ function databaseConnectionString(): string | undefined {
   return value;
 }
 
+function postgresConnectionStringForPool(): string | undefined {
+  const connectionString = databaseConnectionString();
+  if (!connectionString || process.env.PGSSLMODE === "disable") {
+    return connectionString;
+  }
+
+  try {
+    const url = new URL(connectionString);
+    ["sslmode", "sslcert", "sslkey", "sslrootcert"].forEach((param) => url.searchParams.delete(param));
+    return url.toString();
+  } catch {
+    return connectionString;
+  }
+}
+
 async function getPool(): Promise<PgPool> {
   if (globalForPg.fichesPool) {
     return globalForPg.fichesPool;
@@ -66,7 +81,7 @@ async function getPool(): Promise<PgPool> {
 
   const { Pool } = await import("pg");
   globalForPg.fichesPool = new Pool({
-    connectionString: databaseConnectionString(),
+    connectionString: postgresConnectionStringForPool(),
     ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
   });
   return globalForPg.fichesPool;
