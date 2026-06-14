@@ -293,7 +293,7 @@ export function generateMenu(entree: PlanInput, reference: CantineReference = de
       jour
     }));
     const pickedSnack = pickSnackForDay(snackCandidates, jour, normalized);
-    const gouter = pickedSnack
+    const gouter: DaySnack | undefined = pickedSnack
       ? {
           gouter: pickedSnack.snack,
           lignes: pickedSnack.lignes.map((line) => ({
