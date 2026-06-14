@@ -457,7 +457,7 @@ function normalizeFood(row: RawRow, ids: Map<string, number>): Food | undefined 
     typeProteine,
     categorieCulinaire: textCell(row, ["Catégorie culinaire", "Categorie culinaire"]) || groupeAlimentaire,
     conseils: textCell(row, ["Conseils d'utilisation"]),
-    actif: role !== "autre" && prixEstime > 0 && (portionEnfant > 0 || Object.values(portions).some((portion) => portion > 0)),
+    actif: role !== "autre" && (portionEnfant > 0 || Object.values(portions).some((portion) => portion > 0)),
     tags: [
       searchable.includes("porc") ? "porc" : "",
       searchable.includes("poisson") ? "poisson" : "",
@@ -907,6 +907,14 @@ function buildVerificationChecks(
   const allEnergy = jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "base"));
   const allVegetal = jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "vegetal"));
   const allSnacks = jours.every((jour) => Boolean(jour.gouter));
+  const foodsWithoutPrice = Array.from(
+    new Map(
+      jours
+        .flatMap((jour) => jour.lignes)
+        .filter((line) => line.aliment.prixEstime <= 0)
+        .map((line) => [line.aliment.id, line.aliment])
+    ).values()
+  );
   const budgetStatus: Status =
     coutTotal <= entree.budgetTotal ? "Conforme" : coutTotal <= entree.budgetTotal * 1.05 ? "Attention" : "Non conforme";
 
@@ -943,6 +951,15 @@ function buildVerificationChecks(
       libelle: "Gouters",
       statut: allSnacks ? "Conforme" : "Attention",
       detail: allSnacks ? "Chaque jour contient un gouter issu de la reference." : "Aucun gouter disponible pour au moins un jour."
+    },
+    {
+      code: "PX-01",
+      libelle: "Prix de reference",
+      statut: foodsWithoutPrice.length === 0 ? "Conforme" : "Attention",
+      detail:
+        foodsWithoutPrice.length === 0
+          ? "Tous les aliments utilises ont un prix de reference."
+          : `${foodsWithoutPrice.length} aliment(s) du menu ont un prix vide ou nul dans le fichier.`
     },
     {
       code: "RM-04",
