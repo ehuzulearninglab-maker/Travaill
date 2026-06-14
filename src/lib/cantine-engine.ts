@@ -27,6 +27,7 @@ export type PlanInput = {
   dureeJours: number;
   contraintesTexte: string;
   moisDisponibilite: MonthKey[];
+  generationSeed?: number;
   platsChoisis?: Record<number, string>;
   goutersChoisis?: Record<number, string>;
 };
@@ -269,7 +270,7 @@ export function normalizeCantineReference(raw: RawCantineReference): CantineRefe
 
 export function generateMenu(entree: PlanInput, reference: CantineReference = defaultCantineReference): MenuResult {
   const normalized = normalizeInput(entree);
-  const candidates = reference.dishes
+  const resolvedDishes = reference.dishes
     .filter((dish) => isValidatedDish(dish))
     .filter((dish) => !dishContainsFruit(dish, reference))
     .filter((dish) => dishMatchesConstraints(dish, normalized))
@@ -277,13 +278,13 @@ export function generateMenu(entree: PlanInput, reference: CantineReference = de
       const resolved = resolveDish(dish, normalized, reference);
       return { dish, ...resolved };
     })
-    .filter((item) => hasRequiredDishLines(item.lignes))
     .sort((a, b) => a.cout - b.cout || a.dish.budgetRank - b.dish.budgetRank || a.dish.nom.localeCompare(b.dish.nom));
+  const completeDishes = resolvedDishes.filter((item) => hasRequiredDishLines(item.lignes));
 
   const snackCandidates = buildSnackCandidates(normalized, reference);
   const jours: DayMenu[] = [];
   for (let jour = 1; jour <= normalized.dureeJours; jour += 1) {
-    const picked = pickDishForDay(candidates, jour, normalized);
+    const picked = pickDishForDay(resolvedDishes, completeDishes, jour, normalized);
     if (!picked) {
       continue;
     }
@@ -323,7 +324,7 @@ export function generateMenu(entree: PlanInput, reference: CantineReference = de
     });
   }
 
-  return rebuildMenuResult(normalized, jours, reference, buildMenuChoices(candidates), buildSnackChoices(snackCandidates));
+  return rebuildMenuResult(normalized, jours, reference, buildMenuChoices(resolvedDishes), buildSnackChoices(snackCandidates));
 }
 
 export function rebuildMenuResult(
@@ -512,7 +513,8 @@ function normalizeSnack(row: RawRow, index: number): ValidatedSnack | undefined 
   }
 
   const aliments =
-    textCell(row, ["Aliments", "Aliment", "Composition", "Ingrédients", "Ingredients", "Fruit", "Base"]) || nom;
+    textCell(row, ["Aliments", "Aliment", "Composition", "Ingrédients", "Ingredients", "Fruit", "Légumes", "Legumes", "Base"]) ||
+    nom;
 
   return {
     id: `${slugify(nom)}-${index + 1}`,
@@ -616,20 +618,26 @@ function resolveSnack(snack: ValidatedSnack, entree: PlanInput, reference: Canti
 }
 
 function pickDishForDay(
-  candidates: Array<{ dish: ValidatedDish; lignes: Omit<MenuLine, "id" | "jour">[]; cout: number; alertes: string[] }>,
+  allCandidates: Array<{ dish: ValidatedDish; lignes: Omit<MenuLine, "id" | "jour">[]; cout: number; alertes: string[] }>,
+  completeCandidates: Array<{ dish: ValidatedDish; lignes: Omit<MenuLine, "id" | "jour">[]; cout: number; alertes: string[] }>,
   jour: number,
   entree: PlanInput
 ) {
   const selectedDishId = entree.platsChoisis?.[jour];
-  const selected = selectedDishId ? candidates.find((candidate) => candidate.dish.id === selectedDishId) : undefined;
+  const selected = selectedDishId ? allCandidates.find((candidate) => candidate.dish.id === selectedDishId) : undefined;
   if (selected) {
     return selected;
   }
 
   const budgetParRepas = entree.budgetTotal / Math.max(1, entree.dureeJours);
-  const affordable = candidates.filter((candidate) => candidate.cout <= budgetParRepas);
-  const pool = affordable.length > 0 ? affordable : candidates;
-  return pool[(jour - 1) % pool.length];
+  const sourcePool = completeCandidates.length > 0 ? completeCandidates : allCandidates;
+  const affordable = sourcePool.filter((candidate) => candidate.cout <= budgetParRepas);
+  const pool = affordable.length > 0 ? affordable : sourcePool;
+  if (pool.length === 0) {
+    return undefined;
+  }
+  const offset = Math.abs(Math.round(entree.generationSeed || 0));
+  return pool[(jour - 1 + offset) % pool.length];
 }
 
 function buildMenuChoices(
@@ -663,7 +671,6 @@ function buildSnackCandidates(entree: PlanInput, reference: CantineReference) {
   return snacks
     .filter((snack) => snackMatchesConstraints(snack, entree))
     .map((snack) => resolveSnack(snack, entree, reference))
-    .filter((item) => item.lignes.length > 0)
     .sort((a, b) => a.cout - b.cout || a.snack.budgetRank - b.snack.budgetRank || a.snack.nom.localeCompare(b.snack.nom));
 }
 
@@ -686,7 +693,13 @@ function pickSnackForDay(
   if (selected) {
     return selected;
   }
-  return candidates[(jour - 1) % candidates.length];
+  const usable = candidates.filter((candidate) => candidate.lignes.length > 0);
+  const pool = usable.length > 0 ? usable : candidates;
+  if (pool.length === 0) {
+    return undefined;
+  }
+  const offset = Math.abs(Math.round(entree.generationSeed || 0));
+  return pool[(jour - 1 + offset) % pool.length];
 }
 
 function portionForTarget(aliment: Food, target: TargetGroup): number {
@@ -903,10 +916,14 @@ function buildVerificationChecks(
 ): VerificationCheck[] {
   const missingDays = entree.dureeJours - jours.length;
   const allValid = jours.every((jour) => isValidatedDish(jour.plat));
-  const allProteins = jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "proteine"));
-  const allEnergy = jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "base"));
-  const allVegetal = jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "vegetal"));
-  const allSnacks = jours.every((jour) => Boolean(jour.gouter));
+  const hasGeneratedDays = jours.length > 0;
+  const allProteins =
+    hasGeneratedDays && jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "proteine"));
+  const allEnergy =
+    hasGeneratedDays && jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "base"));
+  const allVegetal =
+    hasGeneratedDays && jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "vegetal"));
+  const allSnacks = hasGeneratedDays && jours.every((jour) => Boolean(jour.gouter));
   const foodsWithoutPrice = Array.from(
     new Map(
       jours

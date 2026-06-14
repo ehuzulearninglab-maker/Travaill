@@ -82,13 +82,19 @@ const statusClasses: Record<Status, string> = {
 };
 
 export function CantineApp({ initialReference }: { initialReference: CantineReference }) {
+  const [reference, setReference] = useState(initialReference);
   const [input, setInput] = useState<PlanInput>(initialInput);
   const [selectedDishes, setSelectedDishes] = useState<Record<number, string>>({});
   const [selectedSnacks, setSelectedSnacks] = useState<Record<number, string>>({});
+  const [generationSeed, setGenerationSeed] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>("planification");
   const result = useMemo(
-    () => generateMenu({ ...input, platsChoisis: selectedDishes, goutersChoisis: selectedSnacks }, initialReference),
-    [input, initialReference, selectedDishes, selectedSnacks]
+    () =>
+      generateMenu(
+        { ...input, generationSeed, platsChoisis: selectedDishes, goutersChoisis: selectedSnacks },
+        reference
+      ),
+    [input, reference, generationSeed, selectedDishes, selectedSnacks]
   );
   const effectifEnfants = totalChildren(result.entree);
   const effectifAdultes = totalAdults(result.entree);
@@ -111,6 +117,33 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
     syncHash();
     window.addEventListener("hashchange", syncHash);
     return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function refreshReference() {
+      try {
+        const response = await fetch("/api/cantine/reference", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+        const data = (await response.json()) as { reference?: CantineReference };
+        if (!cancelled && data.reference) {
+          setReference(data.reference);
+          setSelectedDishes({});
+          setSelectedSnacks({});
+          setGenerationSeed((current) => current + 1);
+        }
+      } catch {
+        // La reference fournie par le serveur reste utilisable si le rafraichissement echoue.
+      }
+    }
+
+    void refreshReference();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function updateInput<K extends keyof PlanInput>(key: K, value: PlanInput[K]) {
@@ -148,6 +181,9 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
   }
 
   function generateAndOpenMenu() {
+    setSelectedDishes({});
+    setSelectedSnacks({});
+    setGenerationSeed((current) => current + 1);
     openTab("menu");
   }
 

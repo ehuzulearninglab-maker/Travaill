@@ -9,6 +9,7 @@ import {
 import { parseCantineWorkbook } from "@/lib/cantine-xlsx";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const bundle = await getCantineReferenceBundle();
