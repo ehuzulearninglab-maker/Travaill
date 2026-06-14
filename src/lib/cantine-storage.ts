@@ -15,6 +15,7 @@ export type CantineStorageMode = "postgres" | "local-file" | "memory" | "static"
 export type CantineStorageStatus = {
   mode: CantineStorageMode;
   persistent: boolean;
+  writable: boolean;
   label: string;
   warning?: string;
 };
@@ -53,6 +54,26 @@ function databaseConnectionString(): string | undefined {
 
 function usePostgres(): boolean {
   return Boolean(databaseConnectionString()) && !globalForCantine.cantinePostgresDisabled;
+}
+
+function isHostedProduction(): boolean {
+  return Boolean(process.env.VERCEL);
+}
+
+export function getCantineReferenceWriteBlocker(): string | undefined {
+  if (!isHostedProduction()) {
+    return undefined;
+  }
+
+  if (!databaseConnectionString()) {
+    return "Stockage persistant requis: ajoutez DATABASE_URL dans Vercel avant d'importer un nouveau fichier Excel. Sans base PostgreSQL, Vercel ne peut pas conserver un fichier importe.";
+  }
+
+  if (globalForCantine.cantinePostgresDisabled) {
+    return `Stockage PostgreSQL indisponible: ${globalForCantine.cantinePostgresError || "connexion impossible"}. Corrigez DATABASE_URL puis redeployez.`;
+  }
+
+  return undefined;
 }
 
 async function getPool(): Promise<PgPool> {
@@ -116,18 +137,20 @@ function postgresStatus(): CantineStorageStatus {
   return {
     mode: "postgres",
     persistent: true,
+    writable: true,
     label: "PostgreSQL"
   };
 }
 
 function localFileStatus(): CantineStorageStatus {
-  const onVercel = Boolean(process.env.VERCEL);
+  const onVercel = isHostedProduction();
   return {
     mode: "local-file",
     persistent: !onVercel,
+    writable: !onVercel,
     label: onVercel ? "Fichier temporaire Vercel" : "Fichier local",
     warning: onVercel
-      ? "Sans base PostgreSQL, un import realise sur Vercel peut disparaitre apres un redeploiement."
+      ? getCantineReferenceWriteBlocker()
       : undefined
   };
 }
@@ -136,16 +159,20 @@ function memoryStatus(): CantineStorageStatus {
   return {
     mode: "memory",
     persistent: false,
+    writable: false,
     label: "Memoire serveur temporaire",
-    warning: "Configurez DATABASE_URL pour conserver les futurs imports en production."
+    warning: getCantineReferenceWriteBlocker() || "Configurez DATABASE_URL pour conserver les futurs imports en production."
   };
 }
 
 function staticStatus(): CantineStorageStatus {
+  const writeBlocker = getCantineReferenceWriteBlocker();
   return {
     mode: "static",
     persistent: true,
-    label: "Reference incluse dans l'application"
+    writable: !writeBlocker,
+    label: "Reference incluse dans l'application",
+    warning: writeBlocker
   };
 }
 
@@ -200,6 +227,11 @@ export async function saveActiveCantineReference(
   raw: RawCantineReference,
   sourceName: string
 ): Promise<CantineReferenceBundle> {
+  const writeBlocker = getCantineReferenceWriteBlocker();
+  if (writeBlocker) {
+    throw new Error(writeBlocker);
+  }
+
   const stored: RawCantineReference = {
     ...raw,
     sourceName,
@@ -221,6 +253,11 @@ export async function saveActiveCantineReference(
       reference: normalizeCantineReference(stored),
       status: postgresStatus()
     };
+  }
+
+  const postConnectBlocker = getCantineReferenceWriteBlocker();
+  if (postConnectBlocker) {
+    throw new Error(postConnectBlocker);
   }
 
   globalForCantine.cantineMemoryReference = stored;

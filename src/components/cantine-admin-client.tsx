@@ -80,6 +80,7 @@ export function CantineAdminClient({
   const [aiMessage, setAiMessage] = useState<string | undefined>();
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<FoodRole | "Tous">("Tous");
+  const importDisabled = busy || !status.writable;
 
   const filteredFoods = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -163,6 +164,10 @@ export function CantineAdminClient({
 
   async function uploadReference(file: File | undefined) {
     if (!file) {
+      return;
+    }
+    if (!status.writable) {
+      setMessage(status.warning || "Configurez un stockage persistant avant d'importer un fichier.");
       return;
     }
 
@@ -285,7 +290,7 @@ export function CantineAdminClient({
           icon={Database}
           label="Stockage"
           value={status.label}
-          detail={status.persistent ? "Persistant" : "Temporaire"}
+          detail={status.writable ? (status.persistent ? "Persistant" : "Temporaire") : "Lecture seule"}
         />
         <AdminMetric
           icon={ShieldCheck}
@@ -315,14 +320,23 @@ export function CantineAdminClient({
             Le fichier doit contenir `Base_Aliments` et `Plats_Validés`. La feuille `Gouters` est lue si elle existe.
           </p>
 
+          {!status.writable ? (
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-800">
+              Import bloque en production tant que `DATABASE_URL` n'est pas configure. Cela evite les imports
+              temporaires qui disparaissent au rechargement.
+            </div>
+          ) : null}
+
           <label className="mt-5 flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-sm font-bold text-slate-600 transition hover:border-[#1B6CA8] hover:bg-blue-50">
             <Upload size={24} aria-hidden="true" />
-            <span className="mt-2">{busy ? "Import en cours..." : "Selectionner un fichier Excel"}</span>
+            <span className="mt-2">
+              {busy ? "Import en cours..." : status.writable ? "Selectionner un fichier Excel" : "Stockage persistant requis"}
+            </span>
             <input
               className="sr-only"
               type="file"
               accept=".xlsx,.xls"
-              disabled={busy}
+              disabled={importDisabled}
               onChange={(event) => {
                 uploadReference(event.target.files?.[0]).catch(() => setMessage("Import impossible."));
                 event.currentTarget.value = "";

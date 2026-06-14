@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { isCantineAdmin } from "@/lib/cantine-admin-auth";
 import { normalizeCantineReference } from "@/lib/cantine-engine";
-import { getCantineReferenceBundle, saveActiveCantineReference } from "@/lib/cantine-storage";
+import {
+  getCantineReferenceBundle,
+  getCantineReferenceWriteBlocker,
+  saveActiveCantineReference
+} from "@/lib/cantine-storage";
 import { parseCantineWorkbook } from "@/lib/cantine-xlsx";
 
 export const runtime = "nodejs";
@@ -14,6 +18,11 @@ export async function GET() {
 export async function POST(request: Request) {
   if (!(await isCantineAdmin())) {
     return NextResponse.json({ message: "Acces administrateur requis." }, { status: 403 });
+  }
+
+  const writeBlocker = getCantineReferenceWriteBlocker();
+  if (writeBlocker) {
+    return NextResponse.json({ message: writeBlocker }, { status: 503 });
   }
 
   const formData = await request.formData();

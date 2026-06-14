@@ -271,6 +271,7 @@ export function generateMenu(entree: PlanInput, reference: CantineReference = de
   const normalized = normalizeInput(entree);
   const candidates = reference.dishes
     .filter((dish) => isValidatedDish(dish))
+    .filter((dish) => !dishContainsFruit(dish, reference))
     .filter((dish) => dishMatchesConstraints(dish, normalized))
     .map((dish) => {
       const resolved = resolveDish(dish, normalized, reference);
@@ -705,7 +706,7 @@ function portionForTarget(aliment: Food, target: TargetGroup): number {
 
 function hasRequiredDishLines(lignes: Omit<MenuLine, "id" | "jour">[]): boolean {
   const components = new Set(lignes.map((line) => line.component));
-  return components.has("base") && components.has("proteine");
+  return components.has("base") && components.has("proteine") && components.has("vegetal");
 }
 
 function findBestFood(text: string, role: FoodRole, entree: PlanInput, reference: CantineReference): Food | undefined {
@@ -817,6 +818,36 @@ function dishMatchesConstraints(dish: ValidatedDish, entree: PlanInput): boolean
 function snackMatchesConstraints(snack: ValidatedSnack, entree: PlanInput): boolean {
   const text = normalizeText(`${snack.nom} ${snack.aliments}`);
   return !constraintTextBlocksValue(text, entree.contraintesTexte);
+}
+
+function dishContainsFruit(dish: ValidatedDish, reference: CantineReference): boolean {
+  const normalizedText = normalizeText(
+    `${dish.nom} ${dish.base} ${dish.sauce} ${dish.proteineVisible} ${dish.apportVegetal} ${dish.fruit}`
+  );
+  if (!normalizedText) {
+    return false;
+  }
+  if (dish.fruit.trim()) {
+    return true;
+  }
+  if (/\bfruits?\b/.test(normalizedText)) {
+    return true;
+  }
+
+  return reference.foods.some((food) => {
+    if (!food.actif || food.role !== "fruit") {
+      return false;
+    }
+    return textMentionsFood(normalizedText, normalizeText(food.nom));
+  });
+}
+
+function textMentionsFood(normalizedText: string, normalizedFoodName: string): boolean {
+  const tokens = Array.from(tokenSet(normalizedFoodName)).filter((token) => token !== "fruit" && token !== "fruits");
+  if (tokens.length === 0) {
+    return false;
+  }
+  return tokens.every((token) => new RegExp(`(^|\\s)${escapeRegExp(token)}(\\s|$)`).test(normalizedText));
 }
 
 function isValidatedDish(dish: ValidatedDish): boolean {
@@ -942,7 +973,7 @@ function buildExplanations(
     `Generation limitee aux plats marques Valide dans ${reference.sourceName}.`,
     `Contraintes appliquees: ${contraintesText}; disponibilite: ${moisText}.`,
     `Les couts viennent de Base_Aliments: prix de reference, portions par cible et quantite par vente.`,
-    `Les gouters sont proposes depuis la feuille de gouters si elle existe, sinon depuis les fruits disponibles.`,
+    `Les fruits sont reserves aux gouters; les repas principaux sont limites aux feculents, proteines et legumes du fichier.`,
     ecartBudget >= 0
       ? `Le menu conserve une marge de ${formatCurrency(ecartBudget)} sur le budget.`
       : `Le menu depasse le budget de ${formatCurrency(Math.abs(ecartBudget))}.`,
@@ -1211,6 +1242,10 @@ function uniqueSlug(value: string, ids: Map<string, number>): string {
 
 function slugify(value: string): string {
   return normalizeText(value).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function normalizeText(value: string): string {
