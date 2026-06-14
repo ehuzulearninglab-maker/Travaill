@@ -4,6 +4,7 @@ import type { WorkBook } from "xlsx";
 const sheetAliases = {
   foods: ["base aliments", "base alimentaire", "aliments"],
   dishes: ["plats valides", "plats valide", "menus valides"],
+  snacks: ["gouters", "gouter", "goûters", "goûter", "collations", "collation", "snacks", "snack"],
   avoid: ["associations a eviter", "associations eviter"],
   rules: ["regles de gestion", "regles"],
   sources: ["sources recherche", "sources"]
@@ -28,6 +29,7 @@ export async function parseCantineWorkbook(buffer: ArrayBuffer, fileName: string
     importedAt: new Date().toISOString(),
     foods,
     dishes,
+    snacks: rowsFromSheet(XLSX, workbook, sheetAliases.snacks),
     avoid: rowsFromSheet(XLSX, workbook, sheetAliases.avoid),
     rules: rowsFromSheet(XLSX, workbook, sheetAliases.rules),
     sources: rowsFromSheet(XLSX, workbook, sheetAliases.sources)

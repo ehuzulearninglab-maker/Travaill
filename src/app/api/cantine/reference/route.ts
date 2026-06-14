@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase();
-      return status.includes("valide") && !status.includes("a valider");
+      return !status || (status.includes("valide") && !status.includes("a valider"));
     }).length;
 
     if (alimentsActifs === 0) {

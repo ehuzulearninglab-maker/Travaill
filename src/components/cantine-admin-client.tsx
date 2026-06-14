@@ -267,13 +267,19 @@ export function CantineAdminClient({
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <AdminMetric icon={FileSpreadsheet} label="Source active" value={reference.sourceName} detail={formatDate(reference.importedAt)} />
         <AdminMetric
           icon={ChefHat}
           label="Plats valides"
           value={String(reference.dishes.filter((dish) => isValidatedStatus(dish.statut)).length)}
           detail="Feuille Plats_Validés"
+        />
+        <AdminMetric
+          icon={ChefHat}
+          label="Gouters"
+          value={String(reference.snacks.filter((snack) => isValidatedStatus(snack.statut)).length)}
+          detail="Feuille Gouters"
         />
         <AdminMetric
           icon={Database}
@@ -306,7 +312,7 @@ export function CantineAdminClient({
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-xl font-black text-slate-950">Mettre a jour le fichier</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            Le fichier doit contenir `Base_Aliments` et `Plats_Validés`. Apres validation, il devient la reference active.
+            Le fichier doit contenir `Base_Aliments` et `Plats_Validés`. La feuille `Gouters` est lue si elle existe.
           </p>
 
           <label className="mt-5 flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-sm font-bold text-slate-600 transition hover:border-[#1B6CA8] hover:bg-blue-50">
@@ -332,6 +338,10 @@ export function CantineAdminClient({
             <p>
               <span className="font-bold text-slate-800">Plats valides :</span>{" "}
               {reference.dishes.filter((dish) => isValidatedStatus(dish.statut)).length}
+            </p>
+            <p>
+              <span className="font-bold text-slate-800">Gouters valides :</span>{" "}
+              {reference.snacks.filter((snack) => isValidatedStatus(snack.statut)).length}
             </p>
             <p>
               <span className="font-bold text-slate-800">Dernier import :</span> {formatDate(reference.importedAt)}
@@ -500,5 +510,5 @@ function isValidatedStatus(status: string): boolean {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  return normalized.includes("valide") && !normalized.includes("a valider");
+  return !normalized || (normalized.includes("valide") && !normalized.includes("a valider"));
 }
