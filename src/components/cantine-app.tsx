@@ -250,7 +250,8 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
               Cantine Intelligente
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Repas et gouters proposes a partir du fichier alimentaire charge et des portions par cible.
+              Cantine Intelligente vous aide à planifier des menus scolaires équilibrés, calculer les portions,
+              optimiser les stocks et générer des rapports d'achats détaillés.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
