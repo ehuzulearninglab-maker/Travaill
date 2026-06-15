@@ -629,8 +629,19 @@ function pickDishForDay(
     return selected;
   }
 
+  const dayPreference = dayPreferenceFor(entree.contraintesTexte, jour);
   const budgetParRepas = entree.budgetTotal / Math.max(1, entree.dureeJours);
   const sourcePool = completeCandidates.length > 0 ? completeCandidates : allCandidates;
+  const preferredPool = dayPreference
+    ? sourcePool.filter((candidate) => candidateMatchesDayPreference(candidate, dayPreference))
+    : [];
+  if (preferredPool.length > 0) {
+    const preferredAffordable = preferredPool.filter((candidate) => candidate.cout <= budgetParRepas);
+    const pool = preferredAffordable.length > 0 ? preferredAffordable : preferredPool;
+    const offset = Math.abs(Math.round(entree.generationSeed || 0));
+    return pool[offset % pool.length];
+  }
+
   const affordable = sourcePool.filter((candidate) => candidate.cout <= budgetParRepas);
   const pool = affordable.length > 0 ? affordable : sourcePool;
   if (pool.length === 0) {
@@ -638,6 +649,123 @@ function pickDishForDay(
   }
   const offset = Math.abs(Math.round(entree.generationSeed || 0));
   return pool[(jour - 1 + offset) % pool.length];
+}
+
+function dayPreferenceFor(constraintsText: string, jour: number): string | undefined {
+  return extractDayPreferences(constraintsText).get(jour)?.[0];
+}
+
+function extractDayPreferences(constraintsText: string): Map<number, string[]> {
+  const preferences = new Map<number, string[]>();
+  const normalized = normalizeText(constraintsText)
+    .replace(/\bj\s*(\d{1,2})\b/g, "jour $1")
+    .replace(/\bjournee\s*(\d{1,2})\b/g, "jour $1");
+
+  if (!normalized) {
+    return preferences;
+  }
+
+  const addPreference = (jourText: string, preferenceText: string) => {
+    const dayNumber = Number(jourText);
+    const preference = cleanDayPreferenceText(preferenceText);
+    if (!dayNumber || dayNumber < 1 || dayNumber > 30 || !preference) {
+      return;
+    }
+
+    preferences.set(dayNumber, [...(preferences.get(dayNumber) ?? []), preference]);
+  };
+
+  const beforeDayPattern = /(^|[,;\n.]\s*|\bet\s+|\bpuis\s+|\bensuite\s+)([^,;\n.]+?)\s+(?:le\s+)?jour\s*(\d{1,2})\b/g;
+  for (const match of normalized.matchAll(beforeDayPattern)) {
+    addPreference(match[3], match[2]);
+  }
+
+  const afterDayPattern = /(^|[,;\n.]\s*)\bjour\s*(\d{1,2})\b\s*[:=\-]?\s*([^,;\n.]+)/g;
+  for (const match of normalized.matchAll(afterDayPattern)) {
+    addPreference(match[2], match[3]);
+  }
+
+  return preferences;
+}
+
+function cleanDayPreferenceText(value: string): string {
+  let text = normalizeText(value);
+  if (hasNegativeConstraintMarker(text)) {
+    return "";
+  }
+
+  for (let pass = 0; pass < 4; pass += 1) {
+    text = text
+      .replace(/^(et|puis|ensuite|alors)\s+/, "")
+      .replace(/^(on doit voir|doit voir|il faut voir|je veux|je voudrais|voir|mettre|servir|choisir|prendre|proposer|avoir)\s+/, "")
+      .replace(/^(du|de la|des|de l|de|le|la|les|un|une)\s+/, "")
+      .trim();
+  }
+
+  return text
+    .replace(/\b(menu|repas|plat|base|aliment)\b/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function candidateMatchesDayPreference(
+  candidate: { dish: ValidatedDish; lignes: Array<{ sourceText: string; aliment: Food }> },
+  preference: string
+): boolean {
+  const searchable = normalizeText(
+    [
+      candidate.dish.nom,
+      candidate.dish.base,
+      candidate.dish.sauce,
+      candidate.dish.proteineVisible,
+      candidate.dish.apportVegetal,
+      ...candidate.lignes.flatMap((line) => [
+        line.sourceText,
+        line.aliment.nom,
+        line.aliment.groupeAlimentaire,
+        line.aliment.categorieCulinaire
+      ])
+    ].join(" ")
+  );
+  const terms = expandPreferenceTerms(preference);
+  return terms.some((term) => normalizedTextContainsTerm(searchable, term));
+}
+
+function expandPreferenceTerms(preference: string): string[] {
+  const normalized = normalizeText(preference);
+  const terms = [
+    normalized,
+    ...normalized
+      .split(/\s+ou\s+|\/|\+/)
+      .map((term) => cleanDayPreferenceText(term))
+      .filter(Boolean)
+  ];
+  if (/\btubercules?\b/.test(normalized)) {
+    terms.push("igname", "manioc", "patate douce", "pomme de terre", "taro");
+  }
+  if (/\bpates?\b/.test(normalized)) {
+    terms.push("pate", "pates alimentaires", "coquillettes");
+  }
+  return Array.from(new Set(terms.filter((term) => term.length >= 2)));
+}
+
+function normalizedTextContainsTerm(normalizedText: string, term: string): boolean {
+  const tokens = Array.from(tokenSet(term));
+  if (tokens.length === 0) {
+    return false;
+  }
+  const searchableTokens = tokenSet(normalizedText);
+  const expandedTokens = new Set<string>();
+  searchableTokens.forEach((token) => {
+    expandedTokens.add(token);
+    if (token.endsWith("s") && token.length > 3) {
+      expandedTokens.add(token.slice(0, -1));
+    }
+    if (!token.endsWith("s")) {
+      expandedTokens.add(`${token}s`);
+    }
+  });
+  return tokens.every((token) => expandedTokens.has(token));
 }
 
 function buildMenuChoices(
@@ -924,6 +1052,17 @@ function buildVerificationChecks(
   const allVegetal =
     hasGeneratedDays && jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "vegetal"));
   const allSnacks = hasGeneratedDays && jours.every((jour) => Boolean(jour.gouter));
+  const dayPreferences = Array.from(extractDayPreferences(entree.contraintesTexte).entries()).filter(
+    ([day]) => day >= 1 && day <= entree.dureeJours
+  );
+  const missingDayPreferences = dayPreferences.filter(([day, preferences]) => {
+    const menu = jours.find((jour) => jour.jour === day);
+    if (!menu) {
+      return true;
+    }
+    const mealLines = menu.lignes.filter((line) => line.service === "repas");
+    return !preferences.some((preference) => candidateMatchesDayPreference({ dish: menu.plat, lignes: mealLines }, preference));
+  });
   const foodsWithoutPrice = Array.from(
     new Map(
       jours
@@ -968,6 +1107,19 @@ function buildVerificationChecks(
       libelle: "Gouters",
       statut: allSnacks ? "Conforme" : "Attention",
       detail: allSnacks ? "Chaque jour contient un gouter issu de la reference." : "Aucun gouter disponible pour au moins un jour."
+    },
+    {
+      code: "CT-01",
+      libelle: "Contraintes par jour",
+      statut: missingDayPreferences.length === 0 ? "Conforme" : "Attention",
+      detail:
+        dayPreferences.length === 0
+          ? "Aucune preference de repas par jour detectee."
+          : missingDayPreferences.length === 0
+            ? "Les preferences de repas par jour ont ete appliquees quand un plat valide correspond."
+            : `Preference non trouvee pour ${missingDayPreferences
+                .map(([day, preferences]) => `jour ${day} (${preferences.join(", ")})`)
+                .join("; ")}.`
     },
     {
       code: "PX-01",
@@ -1128,20 +1280,43 @@ function constraintTextBlocksValue(normalizedValue: string, constraintsText: str
     return false;
   }
 
-  const negative = /\b(sans|allergie|interdit|interdits|eviter|evitez|pas de|ne pas)\b/.test(constraints);
-  if (!negative && !isVegetarianConstraint(constraints)) {
+  const blockedTerms = extractBlockedConstraintTerms(constraints);
+  if (blockedTerms.length === 0) {
     return false;
   }
 
-  const blockedKeywords = ["porc", "poisson", "sardine", "tilapia", "arachide", "oeuf", "viande", "poulet", "lait"];
-  if (blockedKeywords.some((keyword) => constraints.includes(keyword) && normalizedValue.includes(keyword))) {
-    return true;
+  return blockedTerms.some((term) => normalizedTextContainsTerm(normalizedValue, term));
+}
+
+function extractBlockedConstraintTerms(constraintsText: string): string[] {
+  const normalized = normalizeText(constraintsText);
+  const blockedTerms: string[] = [];
+  const negativePattern =
+    /\b(sans|allergie|allergique|interdit|interdits|eviter|evitez|exclure|aucun|aucune|pas\s+de|pas\s+d|ne\s+pas)\b\s+([^,;\n.]+)/g;
+
+  for (const match of normalized.matchAll(negativePattern)) {
+    const terms = match[2]
+      .replace(/\b(le|la|les|du|de la|des|de l|de|au|aux|a|l)\b/g, " ")
+      .split(/\s+et\s+|\s+ou\s+|\/|\+/)
+      .map(cleanBlockedConstraintTerm)
+      .filter((term) => term.length >= 2);
+    blockedTerms.push(...terms);
   }
 
-  return normalizedValue
-    .split(/\s+/)
-    .filter((token) => token.length >= 4)
-    .some((token) => constraints.includes(token) && negative);
+  return Array.from(new Set(blockedTerms));
+}
+
+function cleanBlockedConstraintTerm(value: string): string {
+  return normalizeText(value)
+    .replace(/\b(menu|repas|plat|aliment|jour\s*\d{1,2})\b/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function hasNegativeConstraintMarker(value: string): boolean {
+  return /\b(sans|allergie|allergique|interdit|interdits|eviter|evitez|exclure|aucun|aucune|pas\s+de|pas\s+d|ne\s+pas)\b/.test(
+    normalizeText(value)
+  );
 }
 
 function isVegetarianConstraint(value: string): boolean {
