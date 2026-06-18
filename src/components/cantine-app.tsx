@@ -73,9 +73,9 @@ const roleClasses: Record<FoodRole, string> = {
   proteine: "border-emerald-200 bg-emerald-50 text-emerald-800",
   fruit: "border-sky-200 bg-sky-50 text-sky-800",
   vegetal: "border-lime-200 bg-lime-50 text-lime-800",
-  gouter: "border-amber-200 bg-amber-50 text-amber-800",
   autre: "border-slate-200 bg-slate-50 text-slate-700"
 };
+const snackClass = "border-amber-200 bg-amber-50 text-amber-800";
 
 const statusClasses: Record<Status, string> = {
   Conforme: "border-green-200 bg-green-50 text-green-700",
@@ -573,8 +573,8 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                   <tr key={item.aliment.id}>
                     <td className="px-5 py-3 font-bold text-slate-950">{item.aliment.nom}</td>
                     <td className="px-5 py-3">
-                      <span className={`inline-flex rounded-lg border px-2 py-1 text-xs font-black ${roleClasses[item.role]}`}>
-                        {roleLabels[item.role]}
+                      <span className={`inline-flex rounded-lg border px-2 py-1 text-xs font-black ${foodRoleClass(item.aliment)}`}>
+                        {foodRoleLabel(item.aliment)}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-slate-600">{formatPortion(item.aliment, item.quantiteTotale)}</td>
@@ -759,7 +759,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function MenuLineRow({ line, referenceLabel }: { line: MenuLine; referenceLabel: string }) {
   return (
     <div className="grid gap-3 p-4 sm:grid-cols-[120px_1fr_auto] sm:items-center">
-      <span className={`inline-flex w-fit rounded-lg border px-2 py-1 text-xs font-black ${roleClasses[line.role]}`}>
+      <span className={`inline-flex w-fit rounded-lg border px-2 py-1 text-xs font-black ${foodRoleClass(line.aliment)}`}>
         {line.componentLabel}
       </span>
       <div>
@@ -775,6 +775,14 @@ function MenuLineRow({ line, referenceLabel }: { line: MenuLine; referenceLabel:
       </div>
     </div>
   );
+}
+
+function foodRoleClass(food: MenuLine["aliment"]): string {
+  return food.groupeAlimentaire === "Gouter" ? snackClass : roleClasses[food.role];
+}
+
+function foodRoleLabel(food: MenuLine["aliment"]): string {
+  return food.groupeAlimentaire === "Gouter" ? "Gouter" : roleLabels[food.role];
 }
 
 function MetricCard({

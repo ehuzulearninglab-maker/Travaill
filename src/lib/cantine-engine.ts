@@ -15,7 +15,7 @@ export type MonthKey =
   | "novembre"
   | "decembre";
 export type FoodSeason = "Seche" | "Pluies" | "Toute saison";
-export type FoodRole = "energetique" | "proteine" | "fruit" | "vegetal" | "gouter" | "autre";
+export type FoodRole = "energetique" | "proteine" | "fruit" | "vegetal" | "autre";
 export type DishComponent = "base" | "sauce" | "proteine" | "vegetal" | "gouter";
 export type MenuService = "repas" | "gouter";
 export type Status = "Conforme" | "Attention" | "Non conforme";
@@ -198,7 +198,6 @@ export const roleLabels: Record<FoodRole, string> = {
   proteine: "Proteine",
   fruit: "Fruit",
   vegetal: "Legume",
-  gouter: "Gouter",
   autre: "Autre"
 };
 
@@ -672,7 +671,7 @@ function syntheticSnackFood(snack: ValidatedSnack): Food {
     id: `gouter-${slugify(snack.nom)}`,
     nom: snack.nom,
     groupeAlimentaire: "Gouter",
-    role: "gouter",
+    role: "fruit",
     saison: "Toute saison",
     uniteAchat: "portion",
     unitePortion: "piece",
