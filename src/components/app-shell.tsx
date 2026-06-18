@@ -23,7 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       <footer className="no-print border-t border-slate-200 bg-white px-4 py-5 text-center text-sm font-semibold text-slate-500">
-        Cantine Intelligente - Planification alimentaire scolaire
+        Créé par EHUZU LEARNING LAB
       </footer>
     </div>
   );

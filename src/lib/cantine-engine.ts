@@ -15,7 +15,7 @@ export type MonthKey =
   | "novembre"
   | "decembre";
 export type FoodSeason = "Seche" | "Pluies" | "Toute saison";
-export type FoodRole = "energetique" | "proteine" | "fruit" | "vegetal" | "autre";
+export type FoodRole = "energetique" | "proteine" | "fruit" | "vegetal" | "gouter" | "autre";
 export type DishComponent = "base" | "sauce" | "proteine" | "vegetal" | "gouter";
 export type MenuService = "repas" | "gouter";
 export type Status = "Conforme" | "Attention" | "Non conforme";
@@ -90,6 +90,7 @@ export type ValidatedSnack = {
   id: string;
   nom: string;
   aliments: string;
+  prixParPersonne: number;
   budgetConseille: string;
   budgetRank: number;
   statut: string;
@@ -197,6 +198,7 @@ export const roleLabels: Record<FoodRole, string> = {
   proteine: "Proteine",
   fruit: "Fruit",
   vegetal: "Legume",
+  gouter: "Gouter",
   autre: "Autre"
 };
 
@@ -230,6 +232,12 @@ export const monthOptions: { key: MonthKey; label: string }[] = [
   { key: "novembre", label: "Novembre" },
   { key: "decembre", label: "Decembre" }
 ];
+
+const planningDayLabels = ["LUNDI", "MARDI", "JEUDI", "VENDREDI"];
+
+export function planningDayLabel(jour: number): string {
+  return planningDayLabels[(Math.max(1, jour) - 1) % planningDayLabels.length];
+}
 
 const fallbackPortionMultipliers: Record<TargetGroup, number> = {
   maternelle: 0.75,
@@ -415,8 +423,20 @@ function normalizeFood(row: RawRow, ids: Map<string, number>): Food | undefined 
   const uniteAchat = textCell(row, ["Unité achat", "Unite achat"]) || "unite";
   const unitePortionText = textCell(row, ["Unité portion", "Unite portion"]) || uniteAchat;
   const unitePortion = mapPortionUnit(unitePortionText);
-  const prixAbondance = numberCell(row, ["Prix période d'abondance (FCFA)", "Prix periode d'abondance (FCFA)", "Prix abondance"]);
-  const prixSoudure = numberCell(row, ["Prix période de soudure (FCFA)", "Prix periode de soudure (FCFA)", "Prix soudure"]);
+  const prixAbondance = numberCell(row, [
+    "Prix période d'abondance (FCFA)",
+    "Prix periode d'abondance (FCFA)",
+    "Prix Mois d'abondance (FCFA)",
+    "Prix mois abondance",
+    "Prix abondance"
+  ]);
+  const prixSoudure = numberCell(row, [
+    "Prix période de soudure (FCFA)",
+    "Prix periode de soudure (FCFA)",
+    "Prix Mois de soudure (FCFA)",
+    "Prix mois soudure",
+    "Prix soudure"
+  ]);
   const prixEstime =
     numberCell(row, ["Prix estimé (FCFA)", "Prix estime (FCFA)", "Prix estimé", "Prix estime"]) ||
     prixAbondance ||
@@ -512,19 +532,37 @@ function normalizeSnack(row: RawRow, index: number): ValidatedSnack | undefined 
     return undefined;
   }
 
-  const aliments =
-    textCell(row, ["Aliments", "Aliment", "Composition", "Ingrédients", "Ingredients", "Fruit", "Légumes", "Legumes", "Base"]) ||
-    nom;
+  const aliments = snackComposition(row, nom);
 
   return {
     id: `${slugify(nom)}-${index + 1}`,
     nom,
     aliments,
+    prixParPersonne: numberCell(row, [
+      "Prix (FCFA/enfant)",
+      "Prix FCFA enfant",
+      "Prix par enfant",
+      "Prix par personne",
+      "Prix gouter",
+      "Prix"
+    ]),
     budgetConseille: textCell(row, ["Budget conseillé", "Budget conseille", "Budget"]),
     budgetRank: mapBudgetRank(textCell(row, ["Budget conseillé", "Budget conseille", "Budget"])),
     statut: textCell(row, ["Statut"]) || "Valide",
     remarques: textCell(row, ["Remarques terrain", "Remarques"])
   };
+}
+
+function snackComposition(row: RawRow, fallback: string): string {
+  const parts = [
+    textCell(row, ["Composition du goûter fruit", "Composition du gouter fruit", "Fruit", "Fruits"]),
+    textCell(row, ["Composition du goûter légumes", "Composition du gouter legumes", "Légumes", "Legumes"]),
+    textCell(row, ["Aliments", "Aliment", "Composition", "Ingrédients", "Ingredients", "Base"])
+  ]
+    .flatMap((value) => splitFoodParts(value))
+    .filter((part) => part && part !== "r");
+
+  return Array.from(new Set(parts)).join(" / ") || fallback;
 }
 
 function resolveDish(dish: ValidatedDish, entree: PlanInput, reference: CantineReference) {
@@ -602,6 +640,18 @@ function createMenuLine(
 
 function resolveSnack(snack: ValidatedSnack, entree: PlanInput, reference: CantineReference) {
   const alertes: string[] = [];
+  if (snack.prixParPersonne > 0) {
+    const food = syntheticSnackFood(snack);
+    const lignes = [createMenuLine(entree, snack.id, "gouter", "gouter", snack.aliments || snack.nom, food)];
+
+    return {
+      snack,
+      lignes,
+      cout: roundMoney(lignes.reduce((total, line) => total + line.coutLigne, 0)),
+      alertes
+    };
+  }
+
   const foods = findSnackFoods(snack.aliments || snack.nom, entree, reference);
   const lignes = foods.map((food) => createMenuLine(entree, snack.id, "gouter", "gouter", snack.aliments || snack.nom, food));
 
@@ -614,6 +664,40 @@ function resolveSnack(snack: ValidatedSnack, entree: PlanInput, reference: Canti
     lignes,
     cout: roundMoney(lignes.reduce((total, line) => total + line.coutLigne, 0)),
     alertes
+  };
+}
+
+function syntheticSnackFood(snack: ValidatedSnack): Food {
+  return {
+    id: `gouter-${slugify(snack.nom)}`,
+    nom: snack.nom,
+    groupeAlimentaire: "Gouter",
+    role: "gouter",
+    saison: "Toute saison",
+    uniteAchat: "portion",
+    unitePortion: "piece",
+    unitePortionLabel: "portion",
+    prixEstime: snack.prixParPersonne,
+    portionEnfant: 1,
+    portions: {
+      maternelle: 1,
+      ciCp: 1,
+      ce1Ce2: 1,
+      cm1Cm2: 1,
+      adulte: 1
+    },
+    minimumEnfant: 1,
+    modeVente: "portion",
+    quantiteParVente: 1,
+    quantiteParVenteLabel: "1 portion",
+    disponibiliteMois: monthOptions.map((month) => month.key),
+    disponibiliteLabel: "Toute saison",
+    prioriteCout: snack.budgetRank || 3,
+    typeProteine: null,
+    categorieCulinaire: "Gouter",
+    conseils: snack.aliments,
+    actif: true,
+    tags: []
   };
 }
 
@@ -790,6 +874,7 @@ function buildSnackCandidates(entree: PlanInput, reference: CantineReference) {
             id: `gouter-${food.id}`,
             nom: food.nom,
             aliments: food.nom,
+            prixParPersonne: 0,
             budgetConseille: "Reference fichier",
             budgetRank: food.prioriteCout || 3,
             statut: "Valide",
@@ -881,7 +966,7 @@ function findSnackFoods(text: string, entree: PlanInput, reference: CantineRefer
   const foods = reference.foods.filter((food) => foodMatchesBaseConstraints(food, entree));
   const matches = foods.filter((food) => {
     const normalizedName = normalizeText(food.nom);
-    return foodNameMatches(normalizedText, parts, normalizedName);
+    return snackFoodNameMatches(normalizedText, parts, normalizedName);
   });
 
   return Array.from(new Map(matches.map((food) => [food.id, food])).values()).sort(
@@ -905,6 +990,13 @@ function foodNameMatches(normalizedText: string, parts: string[], normalizedName
     const partTokens = tokenSet(part);
     return partTokens.size > 0 && Array.from(partTokens).every((token) => nameTokens.has(token));
   });
+}
+
+function snackFoodNameMatches(normalizedText: string, parts: string[], normalizedName: string): boolean {
+  if (/\bpomme\b/.test(normalizedText) && normalizedName.includes("pomme de terre")) {
+    return false;
+  }
+  return foodNameMatches(normalizedText, parts, normalizedName);
 }
 
 function tokenSet(value: string): Set<string> {

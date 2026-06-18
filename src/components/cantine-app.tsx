@@ -27,6 +27,7 @@ import {
   formatUnitPrice,
   generateMenu,
   monthOptions,
+  planningDayLabel,
   roleLabels,
   targetGroups,
   totalAdults,
@@ -72,6 +73,7 @@ const roleClasses: Record<FoodRole, string> = {
   proteine: "border-emerald-200 bg-emerald-50 text-emerald-800",
   fruit: "border-sky-200 bg-sky-50 text-sky-800",
   vegetal: "border-lime-200 bg-lime-50 text-lime-800",
+  gouter: "border-amber-200 bg-amber-50 text-amber-800",
   autre: "border-slate-200 bg-slate-50 text-slate-700"
 };
 
@@ -216,7 +218,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
       "Cout"
     ];
     const rows = result.lignes.map((line) => [
-      line.jour,
+      planningDayLabel(line.jour),
       result.jours.find((jour) => jour.jour === line.jour)?.plat.nom ?? "",
       line.service === "gouter" ? "Gouter" : "Repas",
       componentLabels[line.component],
@@ -459,7 +461,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                 <article key={day.jour} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                   <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-black text-slate-500">Jour {day.jour}</p>
+                      <p className="text-sm font-black text-slate-500">{planningDayLabel(day.jour)}</p>
                       <h3 className="mt-1 text-xl font-black text-slate-950">{day.plat.nom}</h3>
                       <p className="mt-1 text-sm font-semibold text-slate-600">{formatCurrency(day.coutJournalier)}</p>
                       <label className="mt-4 block max-w-xl">
@@ -473,7 +475,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                         >
                           {result.menusDisponibles.map((menu) => (
                             <option key={menu.id} value={menu.id}>
-                              {menu.nom} - {formatCurrency(menu.coutJournalier)}
+                              {menu.nom}
                             </option>
                           ))}
                         </select>

@@ -191,12 +191,28 @@ function staticStatus(): CantineStorageStatus {
   };
 }
 
+function defaultReferenceIsNewerThan(importedAt: unknown): boolean {
+  const storedTime = Date.parse(asIso(importedAt));
+  const defaultTime = Date.parse(defaultCantineReference.importedAt);
+  if (!Number.isFinite(storedTime) || !Number.isFinite(defaultTime)) {
+    return false;
+  }
+  return defaultTime > storedTime;
+}
+
 export async function getCantineReferenceBundle(): Promise<CantineReferenceBundle> {
   if (usePostgres() && (await ensurePostgresTable())) {
     const pool = await getPool();
     const result = await pool.query("select * from cantine_references where id = $1 limit 1", [ACTIVE_REFERENCE_ID]);
     const row = result.rows[0] as PgRow | undefined;
     if (row) {
+      if (defaultReferenceIsNewerThan(row.imported_at)) {
+        return {
+          reference: defaultCantineReference,
+          status: postgresStatus()
+        };
+      }
+
       const raw = asRawReference(row.data);
       return {
         reference: normalizeCantineReference({
