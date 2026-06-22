@@ -52,11 +52,34 @@ DATABASE_URL=
 CANTINE_ADMIN_PASSWORD=
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash-lite
+OPENAI_API_KEY=
+OPENAI_TRANSCRIPTION_MODEL=gpt-4o-transcribe
+FFMPEG_PATH=
 ```
 
 L'application utilisateur fonctionne sans API externe et sans import a chaque utilisation : la reference `CANTINE_INTELLIGENTE_GPT.xlsx` est incluse dans le site. Les routes API internes Next.js servent a l'administration et a l'import.
 
 Pour conserver durablement les futurs imports admin en production, configurez `DATABASE_URL` avec PostgreSQL/Supabase. Sans base, la reference incluse reste disponible, mais un nouvel import realise depuis Vercel peut etre temporaire.
+
+## Transcription audio
+
+Ouvrir `/transcription` pour importer un fichier audio et recuperer une transcription texte.
+
+La page web fonctionne en ligne : le navigateur decoupe l'audio en petits segments WAV avant l'envoi, puis la route `/api/transcription/chunk` transmet chaque segment a OpenAI. Cela evite d'envoyer un audio de 2 heures en une seule requete.
+
+Une version Windows autonome est aussi disponible sans npm/Node :
+
+- double-cliquer sur `LANCER_TRANSCRIPTION_AUDIO.bat` ;
+- lire `TRANSCRIPTION_AUDIO.md` pour les etapes de lancement ;
+- les resultats sont enregistres dans `transcriptions/`.
+
+Configuration requise :
+
+- `OPENAI_API_KEY` dans `.env.local` en developpement, ou dans les variables d'environnement de l'hebergement en ligne.
+- `OPENAI_TRANSCRIPTION_MODEL`, par defaut `gpt-4o-transcribe`.
+- `ffmpeg` est seulement necessaire pour la route serveur locale `/api/transcription` et pour l'application Windows autonome.
+
+Dans la version Windows autonome, le bouton `Installer ffmpeg local` peut installer `ffmpeg` dans le dossier `outils`.
 
 ## Import du fichier Excel de reference
 
@@ -118,5 +141,8 @@ Les menus generes par Cantine Intelligente sont des propositions d'aide a la dec
 - `src/lib/cantine-engine.ts` : normalisation de la reference, selection des plats valides, calculs et verification.
 - `src/lib/cantine-storage.ts` : lecture/ecriture de la reference active.
 - `src/app/page.tsx` : page d'accueil de l'application.
+- `src/app/transcription/page.tsx` : page de transcription audio.
+- `src/app/api/transcription/route.ts` : route API de transcription et decoupage audio.
+- `src/app/api/transcription/chunk/route.ts` : route API pour la transcription en ligne par petits segments.
 - `src/app/admin-cantine/page.tsx` : page d'administration protegee.
 - `vercel.json` : configuration d'hebergement Vercel.
