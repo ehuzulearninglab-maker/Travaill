@@ -5,5 +5,3 @@ data/database.json
 .env*.local
 dist/
 coverage/
-outils/
-transcriptions/
