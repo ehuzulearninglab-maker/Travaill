@@ -25,7 +25,6 @@ export type PlanInput = {
   effectifs: Record<TargetGroup, number>;
   budgetTotal: number;
   dureeJours: number;
-  contraintesTexte: string;
   moisDisponibilite: MonthKey[];
   generationSeed?: number;
   platsChoisis?: Record<number, string>;
@@ -712,19 +711,8 @@ function pickDishForDay(
     return selected;
   }
 
-  const dayPreference = dayPreferenceFor(entree.contraintesTexte, jour);
   const budgetParRepas = entree.budgetTotal / Math.max(1, entree.dureeJours);
   const sourcePool = completeCandidates.length > 0 ? completeCandidates : allCandidates;
-  const preferredPool = dayPreference
-    ? sourcePool.filter((candidate) => candidateMatchesDayPreference(candidate, dayPreference))
-    : [];
-  if (preferredPool.length > 0) {
-    const preferredAffordable = preferredPool.filter((candidate) => candidate.cout <= budgetParRepas);
-    const pool = preferredAffordable.length > 0 ? preferredAffordable : preferredPool;
-    const offset = Math.abs(Math.round(entree.generationSeed || 0));
-    return pool[offset % pool.length];
-  }
-
   const affordable = sourcePool.filter((candidate) => candidate.cout <= budgetParRepas);
   const pool = affordable.length > 0 ? affordable : sourcePool;
   if (pool.length === 0) {
@@ -732,123 +720,6 @@ function pickDishForDay(
   }
   const offset = Math.abs(Math.round(entree.generationSeed || 0));
   return pool[(jour - 1 + offset) % pool.length];
-}
-
-function dayPreferenceFor(constraintsText: string, jour: number): string | undefined {
-  return extractDayPreferences(constraintsText).get(jour)?.[0];
-}
-
-function extractDayPreferences(constraintsText: string): Map<number, string[]> {
-  const preferences = new Map<number, string[]>();
-  const normalized = normalizeText(constraintsText)
-    .replace(/\bj\s*(\d{1,2})\b/g, "jour $1")
-    .replace(/\bjournee\s*(\d{1,2})\b/g, "jour $1");
-
-  if (!normalized) {
-    return preferences;
-  }
-
-  const addPreference = (jourText: string, preferenceText: string) => {
-    const dayNumber = Number(jourText);
-    const preference = cleanDayPreferenceText(preferenceText);
-    if (!dayNumber || dayNumber < 1 || dayNumber > 30 || !preference) {
-      return;
-    }
-
-    preferences.set(dayNumber, [...(preferences.get(dayNumber) ?? []), preference]);
-  };
-
-  const beforeDayPattern = /(^|[,;\n.]\s*|\bet\s+|\bpuis\s+|\bensuite\s+)([^,;\n.]+?)\s+(?:le\s+)?jour\s*(\d{1,2})\b/g;
-  for (const match of normalized.matchAll(beforeDayPattern)) {
-    addPreference(match[3], match[2]);
-  }
-
-  const afterDayPattern = /(^|[,;\n.]\s*)\bjour\s*(\d{1,2})\b\s*[:=\-]?\s*([^,;\n.]+)/g;
-  for (const match of normalized.matchAll(afterDayPattern)) {
-    addPreference(match[2], match[3]);
-  }
-
-  return preferences;
-}
-
-function cleanDayPreferenceText(value: string): string {
-  let text = normalizeText(value);
-  if (hasNegativeConstraintMarker(text)) {
-    return "";
-  }
-
-  for (let pass = 0; pass < 4; pass += 1) {
-    text = text
-      .replace(/^(et|puis|ensuite|alors)\s+/, "")
-      .replace(/^(on doit voir|doit voir|il faut voir|je veux|je voudrais|voir|mettre|servir|choisir|prendre|proposer|avoir)\s+/, "")
-      .replace(/^(du|de la|des|de l|de|le|la|les|un|une)\s+/, "")
-      .trim();
-  }
-
-  return text
-    .replace(/\b(menu|repas|plat|base|aliment)\b/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function candidateMatchesDayPreference(
-  candidate: { dish: ValidatedDish; lignes: Array<{ sourceText: string; aliment: Food }> },
-  preference: string
-): boolean {
-  const searchable = normalizeText(
-    [
-      candidate.dish.nom,
-      candidate.dish.base,
-      candidate.dish.sauce,
-      candidate.dish.proteineVisible,
-      candidate.dish.apportVegetal,
-      ...candidate.lignes.flatMap((line) => [
-        line.sourceText,
-        line.aliment.nom,
-        line.aliment.groupeAlimentaire,
-        line.aliment.categorieCulinaire
-      ])
-    ].join(" ")
-  );
-  const terms = expandPreferenceTerms(preference);
-  return terms.some((term) => normalizedTextContainsTerm(searchable, term));
-}
-
-function expandPreferenceTerms(preference: string): string[] {
-  const normalized = normalizeText(preference);
-  const terms = [
-    normalized,
-    ...normalized
-      .split(/\s+ou\s+|\/|\+/)
-      .map((term) => cleanDayPreferenceText(term))
-      .filter(Boolean)
-  ];
-  if (/\btubercules?\b/.test(normalized)) {
-    terms.push("igname", "manioc", "patate douce", "pomme de terre", "taro");
-  }
-  if (/\bpates?\b/.test(normalized)) {
-    terms.push("pate", "pates alimentaires", "coquillettes");
-  }
-  return Array.from(new Set(terms.filter((term) => term.length >= 2)));
-}
-
-function normalizedTextContainsTerm(normalizedText: string, term: string): boolean {
-  const tokens = Array.from(tokenSet(term));
-  if (tokens.length === 0) {
-    return false;
-  }
-  const searchableTokens = tokenSet(normalizedText);
-  const expandedTokens = new Set<string>();
-  searchableTokens.forEach((token) => {
-    expandedTokens.add(token);
-    if (token.endsWith("s") && token.length > 3) {
-      expandedTokens.add(token.slice(0, -1));
-    }
-    if (!token.endsWith("s")) {
-      expandedTokens.add(`${token}s`);
-    }
-  });
-  return tokens.every((token) => expandedTokens.has(token));
 }
 
 function buildMenuChoices(
@@ -1036,20 +907,7 @@ function foodMatchesConstraints(food: Food, role: FoodRole, entree: PlanInput): 
 function foodMatchesBaseConstraints(food: Food, entree: PlanInput): boolean {
   if (!food.actif) return false;
   if (!foodAvailableForMonths(food, entree.moisDisponibilite)) return false;
-  if (constraintBlocksFood(food, entree)) return false;
   return true;
-}
-
-function dishMatchesConstraints(dish: ValidatedDish, entree: PlanInput): boolean {
-  const text = normalizeText(`${dish.nom} ${dish.base} ${dish.sauce} ${dish.proteineVisible} ${dish.apportVegetal}`);
-  if (constraintTextBlocksValue(text, entree.contraintesTexte)) return false;
-  if (isVegetarianConstraint(entree.contraintesTexte) && dish.typeProteine === "Animale") return false;
-  return true;
-}
-
-function snackMatchesConstraints(snack: ValidatedSnack, entree: PlanInput): boolean {
-  const text = normalizeText(`${snack.nom} ${snack.aliments}`);
-  return !constraintTextBlocksValue(text, entree.contraintesTexte);
 }
 
 function dishContainsFruit(dish: ValidatedDish, reference: CantineReference): boolean {
@@ -1143,17 +1001,6 @@ function buildVerificationChecks(
   const allVegetal =
     hasGeneratedDays && jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "vegetal"));
   const allSnacks = hasGeneratedDays && jours.every((jour) => Boolean(jour.gouter));
-  const dayPreferences = Array.from(extractDayPreferences(entree.contraintesTexte).entries()).filter(
-    ([day]) => day >= 1 && day <= entree.dureeJours
-  );
-  const missingDayPreferences = dayPreferences.filter(([day, preferences]) => {
-    const menu = jours.find((jour) => jour.jour === day);
-    if (!menu) {
-      return true;
-    }
-    const mealLines = menu.lignes.filter((line) => line.service === "repas");
-    return !preferences.some((preference) => candidateMatchesDayPreference({ dish: menu.plat, lignes: mealLines }, preference));
-  });
   const foodsWithoutPrice = Array.from(
     new Map(
       jours
@@ -1200,19 +1047,6 @@ function buildVerificationChecks(
       detail: allSnacks ? "Chaque jour contient un gouter issu de la reference." : "Aucun gouter disponible pour au moins un jour."
     },
     {
-      code: "CT-01",
-      libelle: "Contraintes par jour",
-      statut: missingDayPreferences.length === 0 ? "Conforme" : "Attention",
-      detail:
-        dayPreferences.length === 0
-          ? "Aucune preference de repas par jour detectee."
-          : missingDayPreferences.length === 0
-            ? "Les preferences de repas par jour ont ete appliquees quand un plat valide correspond."
-            : `Preference non trouvee pour ${missingDayPreferences
-                .map(([day, preferences]) => `jour ${day} (${preferences.join(", ")})`)
-                .join("; ")}.`
-    },
-    {
       code: "PX-01",
       libelle: "Prix de reference",
       statut: foodsWithoutPrice.length === 0 ? "Conforme" : "Attention",
@@ -1241,14 +1075,13 @@ function buildExplanations(
   statut: Status,
   reference: CantineReference
 ): string[] {
-  const contraintesText = entree.contraintesTexte.trim() || "aucune contrainte alimentaire";
   const moisText =
     entree.moisDisponibilite.length === monthOptions.length
       ? "tous les mois"
       : entree.moisDisponibilite.map((month) => monthOptions.find((item) => item.key === month)?.label ?? month).join(", ");
   return [
     `Generation limitee aux plats marques Valide dans ${reference.sourceName}.`,
-    `Contraintes appliquees: ${contraintesText}; disponibilite: ${moisText}.`,
+    `Disponibilite appliquee: ${moisText}.`,
     `Les couts viennent de Base_Aliments: prix de reference, portions par cible et quantite par vente.`,
     `Les fruits sont reserves aux gouters; les repas principaux sont limites aux feculents, proteines et legumes du fichier.`,
     ecartBudget >= 0
@@ -1278,7 +1111,6 @@ function normalizeInput(entree: PlanInput): PlanInput {
     effectifs,
     budgetTotal: Math.max(0, Math.round(entree.budgetTotal || 0)),
     dureeJours: Math.min(30, Math.max(1, Math.round(entree.dureeJours || 1))),
-    contraintesTexte: entree.contraintesTexte || "",
     moisDisponibilite: normalizedMonths.length > 0 ? Array.from(new Set(normalizedMonths)) : monthOptions.map((month) => month.key)
   };
 }
@@ -1352,67 +1184,6 @@ function monthsBetween(start: MonthKey, end: MonthKey): MonthKey[] {
     return months.slice(startIndex, endIndex + 1);
   }
   return [...months.slice(startIndex), ...months.slice(0, endIndex + 1)];
-}
-
-function constraintBlocksFood(food: Food, entree: PlanInput): boolean {
-  const constraintsText = entree.contraintesTexte || "";
-  if (constraintTextBlocksValue(normalizeText(`${food.nom} ${food.groupeAlimentaire} ${food.categorieCulinaire}`), constraintsText)) {
-    return true;
-  }
-  if (isVegetarianConstraint(constraintsText) && food.typeProteine === "Animale") {
-    return true;
-  }
-  return false;
-}
-
-function constraintTextBlocksValue(normalizedValue: string, constraintsText: string): boolean {
-  const constraints = normalizeText(constraintsText);
-  if (!constraints) {
-    return false;
-  }
-
-  const blockedTerms = extractBlockedConstraintTerms(constraints);
-  if (blockedTerms.length === 0) {
-    return false;
-  }
-
-  return blockedTerms.some((term) => normalizedTextContainsTerm(normalizedValue, term));
-}
-
-function extractBlockedConstraintTerms(constraintsText: string): string[] {
-  const normalized = normalizeText(constraintsText);
-  const blockedTerms: string[] = [];
-  const negativePattern =
-    /\b(sans|allergie|allergique|interdit|interdits|eviter|evitez|exclure|aucun|aucune|pas\s+de|pas\s+d|ne\s+pas)\b\s+([^,;\n.]+)/g;
-
-  for (const match of normalized.matchAll(negativePattern)) {
-    const terms = match[2]
-      .replace(/\b(le|la|les|du|de la|des|de l|de|au|aux|a|l)\b/g, " ")
-      .split(/\s+et\s+|\s+ou\s+|\/|\+/)
-      .map(cleanBlockedConstraintTerm)
-      .filter((term) => term.length >= 2);
-    blockedTerms.push(...terms);
-  }
-
-  return Array.from(new Set(blockedTerms));
-}
-
-function cleanBlockedConstraintTerm(value: string): string {
-  return normalizeText(value)
-    .replace(/\b(menu|repas|plat|aliment|jour\s*\d{1,2})\b/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function hasNegativeConstraintMarker(value: string): boolean {
-  return /\b(sans|allergie|allergique|interdit|interdits|eviter|evitez|exclure|aucun|aucune|pas\s+de|pas\s+d|ne\s+pas)\b/.test(
-    normalizeText(value)
-  );
-}
-
-function isVegetarianConstraint(value: string): boolean {
-  const normalized = normalizeText(value);
-  return normalized.includes("vegetarien") || normalized.includes("vegetalien") || normalized.includes("sans viande");
 }
 
 function textCell(row: RawRow, labels: string[]): string {

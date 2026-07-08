@@ -57,7 +57,6 @@ const initialInput: PlanInput = {
   },
   budgetTotal: 210000,
   dureeJours: 5,
-  contraintesTexte: "",
   moisDisponibilite: monthOptions.map((month) => month.key)
 };
 
@@ -309,7 +308,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black text-slate-950">Contexte de planification</h2>
-                <p className="mt-1 text-sm text-slate-500">Effectifs, periode, budget et contraintes du menu.</p>
+                <p className="mt-1 text-sm text-slate-500">Effectifs, periode, budget et disponibilite du menu.</p>
               </div>
               <ChefHat className="text-[#1B6CA8]" size={24} aria-hidden="true" />
             </div>
@@ -407,14 +406,6 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                 </div>
               </fieldset>
 
-              <Field label="Contraintes alimentaires">
-                <textarea
-                  className="champ min-h-[112px] resize-y"
-                  placeholder="Exemples: sans porc, allergie arachide, sans poisson, vegetarien, pas de lait..."
-                  value={input.contraintesTexte}
-                  onChange={(event) => updateInput("contraintesTexte", event.target.value)}
-                />
-              </Field>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
