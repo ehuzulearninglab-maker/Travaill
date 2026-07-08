@@ -82,6 +82,13 @@ const statusClasses: Record<Status, string> = {
   "Non conforme": "border-red-200 bg-red-50 text-red-700"
 };
 
+const portionDiagramItems: { component: MenuLine["component"]; label: string; color: string }[] = [
+  { component: "base", label: "Feculent", color: "#fb923c" },
+  { component: "proteine", label: "Proteine", color: "#34d399" },
+  { component: "vegetal", label: "Legume", color: "#a3e635" },
+  { component: "gouter", label: "Gouter", color: "#f59e0b" }
+];
+
 export function CantineApp({ initialReference }: { initialReference: CantineReference }) {
   const [reference, setReference] = useState(initialReference);
   const [input, setInput] = useState<PlanInput>(initialInput);
@@ -447,6 +454,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             {result.jours.map((day) => {
               const mealLines = day.lignes.filter((line) => line.service === "repas");
               const snackLines = day.gouter?.lignes ?? [];
+              const selectedTargetGroups = targetGroups.filter((target) => result.entree.effectifs[target.key] > 0);
 
               return (
                 <article key={day.jour} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -517,6 +525,8 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                       ))}
                     </div>
                   ) : null}
+
+                  <PortionDiagrams day={day} targets={selectedTargetGroups} />
 
                   {day.alertes.length > 0 ? (
                     <div className="border-t border-amber-100 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
@@ -766,6 +776,105 @@ function MenuLineRow({ line, referenceLabel }: { line: MenuLine; referenceLabel:
       </div>
     </div>
   );
+}
+
+type PortionDiagramTarget = (typeof targetGroups)[number];
+
+type PortionDiagramEntry = {
+  label: string;
+  color: string;
+  value: number;
+  unit: string;
+};
+
+function PortionDiagrams({ day, targets }: { day: DayMenu; targets: PortionDiagramTarget[] }) {
+  const diagrams = targets
+    .map((target) => ({
+      target,
+      entries: portionEntriesForTarget(day, target)
+    }))
+    .filter((diagram) => diagram.entries.length > 0);
+
+  if (diagrams.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="border-t border-slate-100 bg-white p-4">
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Portions individuelles</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {diagrams.map(({ target, entries }) => (
+          <div key={target.key} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center gap-3">
+              <div
+                className="relative h-20 w-20 shrink-0 rounded-full shadow-inner"
+                style={{ background: "conic-gradient(" + portionGradient(entries) + ")" }}
+                aria-hidden="true"
+              >
+                <div className="absolute inset-4 flex items-center justify-center rounded-full bg-white text-center shadow-sm">
+                  <span className="text-[10px] font-black uppercase leading-3 text-slate-700">{target.label}</span>
+                </div>
+              </div>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                {entries.map((entry) => (
+                  <div key={entry.label} className="flex items-start justify-between gap-2 text-xs">
+                    <span className="flex min-w-0 items-center gap-2 font-bold text-slate-600">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: entry.color }} />
+                      <span className="truncate">{entry.label}</span>
+                    </span>
+                    <span className="shrink-0 text-right font-black text-slate-950">
+                      {formatDiagramPortion(entry.value, entry.unit)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function portionEntriesForTarget(day: DayMenu, target: PortionDiagramTarget): PortionDiagramEntry[] {
+  return portionDiagramItems
+    .map((item) => {
+      const line = day.lignes.find((candidate) =>
+        item.component === "gouter"
+          ? candidate.service === "gouter"
+          : candidate.service === "repas" && candidate.component === item.component
+      );
+      if (!line) {
+        return undefined;
+      }
+
+      const value = line.portionAffichee?.quantitesParCible[target.key] ?? line.quantitesParCible[target.key] ?? 0;
+      if (value <= 0) {
+        return undefined;
+      }
+
+      return {
+        label: item.label,
+        color: item.color,
+        value,
+        unit: line.portionAffichee?.uniteLabel || line.aliment.unitePortionLabel || line.aliment.unitePortion
+      };
+    })
+    .filter((entry): entry is PortionDiagramEntry => Boolean(entry));
+}
+
+function portionGradient(entries: PortionDiagramEntry[]): string {
+  const step = 100 / entries.length;
+  return entries.map((entry, index) => `${entry.color} ${index * step}% ${(index + 1) * step}%`).join(", ");
+}
+
+function formatDiagramPortion(value: number, unit: string): string {
+  const cleanUnit = unit.trim() || "portion";
+  return `${trimDiagramNumber(value)} ${cleanUnit}`;
+}
+
+function trimDiagramNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
 function foodRoleClass(food: MenuLine["aliment"]): string {

@@ -21,6 +21,11 @@ export type MenuService = "repas" | "gouter";
 export type Status = "Conforme" | "Attention" | "Non conforme";
 export type PortionUnit = "g" | "piece";
 
+export type PortionDisplay = {
+  quantitesParCible: Record<TargetGroup, number>;
+  uniteLabel: string;
+};
+
 export type PlanInput = {
   effectifs: Record<TargetGroup, number>;
   budgetTotal: number;
@@ -83,6 +88,11 @@ export type ValidatedDish = {
   budgetRank: number;
   statut: string;
   remarques: string;
+  componentPortions: {
+    base: PortionDisplay;
+    proteine: PortionDisplay;
+    vegetal: PortionDisplay;
+  };
 };
 
 export type ValidatedSnack = {
@@ -120,6 +130,7 @@ export type MenuLine = {
   role: FoodRole;
   quantiteParEnfant: number;
   quantitesParCible: Record<TargetGroup, number>;
+  portionAffichee?: PortionDisplay;
   quantiteTotale: number;
   quantiteAchat: number;
   surplus: number;
@@ -279,7 +290,6 @@ export function generateMenu(entree: PlanInput, reference: CantineReference = de
   const resolvedDishes = reference.dishes
     .filter((dish) => isValidatedDish(dish))
     .filter((dish) => !dishContainsFruit(dish, reference))
-    .filter((dish) => dishMatchesConstraints(dish, normalized))
     .map((dish) => {
       const resolved = resolveDish(dish, normalized, reference);
       return { dish, ...resolved };
@@ -512,7 +522,8 @@ function normalizeDish(row: RawRow, index: number): ValidatedDish | undefined {
     budgetConseille: textCell(row, ["Budget conseillé", "Budget conseille"]),
     budgetRank: mapBudgetRank(textCell(row, ["Budget conseillé", "Budget conseille"])),
     statut: textCell(row, ["Statut"]),
-    remarques: textCell(row, ["Remarques terrain"])
+    remarques: textCell(row, ["Remarques terrain"]),
+    componentPortions: dishComponentPortions(row)
   };
 }
 
@@ -563,26 +574,58 @@ function snackComposition(row: RawRow, fallback: string): string {
   return Array.from(new Set(parts)).join(" / ") || fallback;
 }
 
+function dishComponentPortions(row: RawRow): ValidatedDish["componentPortions"] {
+  return {
+    base: dishPortionProfile(row, ""),
+    proteine: dishPortionProfile(row, " 3"),
+    vegetal: dishPortionProfile(row, " 2")
+  };
+}
+
+function dishPortionProfile(row: RawRow, suffix: "" | " 2" | " 3"): PortionDisplay {
+  const quantitesParCible = targetGroups.reduce((values, target) => ({
+    ...values,
+    [target.key]: numberCell(row, dishPortionLabels(target.key, suffix))
+  }), {} as Record<TargetGroup, number>);
+  const uniteLabel = textCell(row, suffix ? [`Unite portion${suffix}`] : ["Unite portion"]);
+
+  return {
+    quantitesParCible,
+    uniteLabel
+  };
+}
+
+function dishPortionLabels(target: TargetGroup, suffix: "" | " 2" | " 3"): string[] {
+  const labels: Record<TargetGroup, string> = {
+    maternelle: "Portion standard enfant Maternelle (3ans - 5 ans)",
+    ciCp: "Portion standard enfant CI/CP (6ans - 7 ans)",
+    ce1Ce2: "Portion standard enfant CE1/CE2 (8ans - 9 ans)",
+    cm1Cm2: "Portion standard enfant CM1/CM2 (10ans - 11 ans)",
+    adulte: "Portion standard Adulte (18ans - 60ans)"
+  };
+  return [`${labels[target]}${suffix}`];
+}
+
 function resolveDish(dish: ValidatedDish, entree: PlanInput, reference: CantineReference) {
   const alertes: string[] = [];
   const lines: Omit<MenuLine, "id" | "jour">[] = [];
 
-  const addFood = (component: DishComponent, sourceText: string, food: Food) => {
-    lines.push(createMenuLine(entree, dish.id, "repas", component, sourceText, food));
+  const addFood = (component: DishComponent, sourceText: string, food: Food, portionAffichee?: PortionDisplay) => {
+    lines.push(createMenuLine(entree, dish.id, "repas", component, sourceText, food, portionAffichee));
   };
 
   const base = findBestFood(dish.base, "energetique", entree, reference);
-  if (base) addFood("base", dish.base, base);
+  if (base) addFood("base", dish.base, base, dish.componentPortions.base);
   else alertes.push(`Base non trouvee: ${dish.base}`);
 
   const proteineText = dish.proteineVisible || dish.nom;
   const proteine = findBestFood(proteineText, "proteine", entree, reference);
-  if (proteine) addFood("proteine", proteineText, proteine);
+  if (proteine) addFood("proteine", proteineText, proteine, dish.componentPortions.proteine);
   else alertes.push(`Proteine non trouvee: ${proteineText}`);
 
   const vegetalFoods = findAllFoods(`${dish.apportVegetal} ${dish.sauce}`, "vegetal", entree, reference).slice(0, 2);
   if (vegetalFoods.length > 0) {
-    vegetalFoods.forEach((food) => addFood("vegetal", dish.apportVegetal || dish.sauce, food));
+    vegetalFoods.forEach((food) => addFood("vegetal", dish.apportVegetal || dish.sauce, food, dish.componentPortions.vegetal));
   } else {
     alertes.push(`Apport vegetal non trouve: ${dish.apportVegetal || dish.sauce}`);
   }
@@ -600,7 +643,8 @@ function createMenuLine(
   service: MenuService,
   component: DishComponent,
   sourceText: string,
-  aliment: Food
+  aliment: Food,
+  portionAffichee?: PortionDisplay
 ): Omit<MenuLine, "id" | "jour"> {
   const quantitesParCible = targetGroups.reduce((values, target) => {
     const effectif = entree.effectifs[target.key] ?? 0;
@@ -629,6 +673,7 @@ function createMenuLine(
     role: aliment.role,
     quantiteParEnfant,
     quantitesParCible,
+    portionAffichee,
     quantiteTotale,
     quantiteAchat,
     surplus,
@@ -752,7 +797,6 @@ function buildSnackCandidates(entree: PlanInput, reference: CantineReference) {
           }));
 
   return snacks
-    .filter((snack) => snackMatchesConstraints(snack, entree))
     .map((snack) => resolveSnack(snack, entree, reference))
     .sort((a, b) => a.cout - b.cout || a.snack.budgetRank - b.snack.budgetRank || a.snack.nom.localeCompare(b.snack.nom));
 }
