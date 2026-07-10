@@ -623,11 +623,14 @@ function resolveDish(dish: ValidatedDish, entree: PlanInput, reference: CantineR
   if (proteine) addFood("proteine", proteineText, proteine, dish.componentPortions.proteine);
   else alertes.push(`Proteine non trouvee: ${proteineText}`);
 
-  const vegetalFoods = findAllFoods(`${dish.apportVegetal} ${dish.sauce}`, "vegetal", entree, reference).slice(0, 2);
+  const vegetalText = [dish.apportVegetal, dish.sauce, dish.nom].filter(Boolean).join(" ");
+  const vegetalFoods = findAllFoods(vegetalText, "vegetal", entree, reference).slice(0, 2);
   if (vegetalFoods.length > 0) {
-    vegetalFoods.forEach((food) => addFood("vegetal", dish.apportVegetal || dish.sauce, food, dish.componentPortions.vegetal));
+    vegetalFoods.forEach((food) =>
+      addFood("vegetal", dish.apportVegetal || dish.sauce || dish.nom, food, dish.componentPortions.vegetal)
+    );
   } else {
-    alertes.push(`Apport vegetal non trouve: ${dish.apportVegetal || dish.sauce}`);
+    alertes.push(`Apport vegetal non trouve: ${vegetalText || dish.nom}`);
   }
 
   return {
@@ -1043,7 +1046,10 @@ function buildVerificationChecks(
   const allEnergy =
     hasGeneratedDays && jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "base"));
   const allVegetal =
-    hasGeneratedDays && jours.every((jour) => jour.lignes.some((line) => line.service === "repas" && line.component === "vegetal"));
+    hasGeneratedDays &&
+    jours.every((jour) =>
+      jour.lignes.some((line) => line.service === "repas" && (line.component === "vegetal" || line.role === "vegetal"))
+    );
   const allSnacks = hasGeneratedDays && jours.every((jour) => Boolean(jour.gouter));
   const foodsWithoutPrice = Array.from(
     new Map(

@@ -210,31 +210,14 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
   }
 
   function downloadCsv() {
-    const header = [
-      "Jour",
-      "Plat valide",
-      "Service",
-      "Composant",
-      "Reference fichier",
-      "Aliment retenu",
-      "Quantite moyenne par personne",
-      "Quantite totale",
-      "Prix reference",
-      "A acheter",
-      "Cout"
-    ];
+    const header = ["Jour", "Plat valide", "Service", "Composant", "Aliment retenu", "Portions par cible"];
     const rows = result.lignes.map((line) => [
       planningDayLabel(line.jour),
       result.jours.find((jour) => jour.jour === line.jour)?.plat.nom ?? "",
       line.service === "gouter" ? "Gouter" : "Repas",
       componentLabels[line.component],
-      line.sourceText,
       line.aliment.nom,
-      formatPortion(line.aliment, line.quantiteParEnfant),
-      formatPortion(line.aliment, line.quantiteTotale),
-      formatUnitPrice(line.aliment),
-      formatPurchaseQuantity(line.aliment, line.quantiteAchat),
-      line.coutLigne
+      formatTargetPortions(line)
     ]);
     const csv = [header, ...rows].map((row) => row.map(csvCell).join(";")).join("\n");
     const blob = new Blob([String.fromCharCode(0xfeff), csv], { type: "text/csv;charset=utf-8" });
@@ -447,13 +430,11 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                 Generation du {formatDateTime(result.genereLe)} depuis les plats valides du fichier.
               </p>
             </div>
-            <StatusBadge status={result.statut} />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             {result.jours.map((day) => {
               const mealLines = day.lignes.filter((line) => line.service === "repas");
-              const snackLines = day.gouter?.lignes ?? [];
               const selectedTargetGroups = targetGroups.filter((target) => result.entree.effectifs[target.key] > 0);
 
               return (
@@ -462,7 +443,6 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-black text-slate-500">{planningDayLabel(day.jour)}</p>
                       <h3 className="mt-1 text-xl font-black text-slate-950">{day.plat.nom}</h3>
-                      <p className="mt-1 text-sm font-semibold text-slate-600">{formatCurrency(day.coutJournalier)}</p>
                       <label className="mt-4 block max-w-xl">
                         <span className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">
                           Changer le repas du jour
@@ -480,14 +460,9 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                         </select>
                       </label>
                     </div>
-                    <StatusBadge status={day.statut} compact />
                   </div>
 
-                  <div className="divide-y divide-slate-100">
-                    {mealLines.map((line) => (
-                      <MenuLineRow key={line.id} line={line} referenceLabel="Reference repas" />
-                    ))}
-                  </div>
+                  <MenuIngredientSummary lines={mealLines} />
 
                   <div className="border-t border-slate-100 bg-slate-50 p-4">
                     <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
@@ -495,7 +470,6 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                         <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Gouter propose</p>
                         <h4 className="mt-1 text-lg font-black text-slate-950">{day.gouter?.gouter.nom ?? "Aucun gouter disponible"}</h4>
                       </div>
-                      {day.gouter ? <p className="font-black text-slate-950">{formatCurrency(day.gouter.coutGouter)}</p> : null}
                     </div>
 
                     {result.goutersDisponibles.length > 0 ? (
@@ -510,21 +484,13 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                         >
                           {result.goutersDisponibles.map((gouter) => (
                             <option key={gouter.id} value={gouter.id}>
-                              {gouter.nom} - {formatCurrency(gouter.coutJournalier)}
+                              {gouter.nom}
                             </option>
                           ))}
                         </select>
                       </label>
                     ) : null}
                   </div>
-
-                  {snackLines.length > 0 ? (
-                    <div className="divide-y divide-slate-100">
-                      {snackLines.map((line) => (
-                        <MenuLineRow key={line.id} line={line} referenceLabel="Reference gouter" />
-                      ))}
-                    </div>
-                  ) : null}
 
                   <PortionDiagrams day={day} targets={selectedTargetGroups} />
 
@@ -757,22 +723,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function MenuLineRow({ line, referenceLabel }: { line: MenuLine; referenceLabel: string }) {
+function MenuIngredientSummary({ lines }: { lines: MenuLine[] }) {
+  if (lines.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="grid gap-3 p-4 sm:grid-cols-[120px_1fr_auto] sm:items-center">
-      <span className={`inline-flex w-fit rounded-lg border px-2 py-1 text-xs font-black ${foodRoleClass(line.aliment)}`}>
-        {line.componentLabel}
-      </span>
-      <div>
-        <p className="font-black text-slate-950">{line.aliment.nom}</p>
-        <p className="mt-1 text-xs font-semibold text-slate-500">
-          {referenceLabel}: {line.sourceText || line.aliment.nom}
-        </p>
-        <p className="mt-1 text-xs font-semibold text-slate-500">{formatTargetPortions(line)}</p>
-      </div>
-      <div className="text-left text-sm sm:text-right">
-        <p className="font-bold text-slate-700">{formatPortion(line.aliment, line.quantiteTotale)} total</p>
-        <p className="mt-1 font-black text-slate-950">{formatCurrency(line.coutLigne)}</p>
+    <div className="border-b border-slate-100 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Composition du repas</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {lines.map((line) => (
+          <span
+            key={line.id}
+            className={`inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-bold text-slate-800 ${foodRoleClass(
+              line.aliment
+            )}`}
+          >
+            <span className="text-xs font-black uppercase tracking-[0.08em]">{line.componentLabel}</span>
+            <span className="text-slate-950">{line.aliment.nom}</span>
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -800,21 +770,13 @@ function PortionDiagrams({ day, targets }: { day: DayMenu; targets: PortionDiagr
   }
 
   return (
-    <div className="border-t border-slate-100 bg-white p-4">
+    <div className="border-t border-slate-100 bg-slate-50/70 p-4">
       <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Portions individuelles</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {diagrams.map(({ target, entries }) => (
-          <div key={target.key} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div key={target.key} className="rounded-lg border border-slate-200 bg-white p-3">
             <div className="flex items-center gap-3">
-              <div
-                className="relative h-20 w-20 shrink-0 rounded-full shadow-inner"
-                style={{ background: "conic-gradient(" + portionGradient(entries) + ")" }}
-                aria-hidden="true"
-              >
-                <div className="absolute inset-4 flex items-center justify-center rounded-full bg-white text-center shadow-sm">
-                  <span className="text-[10px] font-black uppercase leading-3 text-slate-700">{target.label}</span>
-                </div>
-              </div>
+              <PortionDonut label={target.label} entries={entries} />
               <div className="min-w-0 flex-1 space-y-1.5">
                 {entries.map((entry) => (
                   <div key={entry.label} className="flex items-start justify-between gap-2 text-xs">
@@ -833,6 +795,40 @@ function PortionDiagrams({ day, targets }: { day: DayMenu; targets: PortionDiagr
         ))}
       </div>
     </div>
+  );
+}
+
+function PortionDonut({ label, entries }: { label: string; entries: PortionDiagramEntry[] }) {
+  const segment = entries.length > 0 ? 100 / entries.length : 100;
+  let offset = 0;
+
+  return (
+    <svg className="h-20 w-20 shrink-0" viewBox="0 0 80 80" role="img" aria-label={"Portions " + label}>
+      <circle cx="40" cy="40" r="28" fill="white" stroke="#e2e8f0" strokeWidth="12" />
+      {entries.map((entry) => {
+        const currentOffset = offset;
+        offset += segment;
+        return (
+          <circle
+            key={entry.label}
+            cx="40"
+            cy="40"
+            r="28"
+            fill="none"
+            stroke={entry.color}
+            strokeWidth="12"
+            pathLength={100}
+            strokeDasharray={segment + " " + (100 - segment)}
+            strokeDashoffset={-currentOffset}
+            transform="rotate(-90 40 40)"
+          />
+        );
+      })}
+      <circle cx="40" cy="40" r="18" fill="white" stroke="#e2e8f0" strokeWidth="1" />
+      <text x="40" y="43" textAnchor="middle" className="fill-slate-700 text-[9px] font-black uppercase">
+        {label}
+      </text>
+    </svg>
   );
 }
 
@@ -863,10 +859,6 @@ function portionEntriesForTarget(day: DayMenu, target: PortionDiagramTarget): Po
     .filter((entry): entry is PortionDiagramEntry => Boolean(entry));
 }
 
-function portionGradient(entries: PortionDiagramEntry[]): string {
-  const step = 100 / entries.length;
-  return entries.map((entry, index) => `${entry.color} ${index * step}% ${(index + 1) * step}%`).join(", ");
-}
 
 function formatDiagramPortion(value: number, unit: string): string {
   const cleanUnit = unit.trim() || "portion";
