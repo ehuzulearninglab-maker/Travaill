@@ -1193,10 +1193,8 @@ function buildExplanations(
 }
 
 function normalizeInput(entree: PlanInput): PlanInput {
-  const legacy = entree as PlanInput & { nombreEnfants?: number };
-  const fallbackEffectif = Math.max(0, Math.round(legacy.nombreEnfants || 0));
   const effectifs = targetGroups.reduce((values, target) => {
-    const value = entree.effectifs?.[target.key] ?? (target.key === "ce1Ce2" ? fallbackEffectif : 0);
+    const value = entree.effectifs?.[target.key] ?? 0;
     return {
       ...values,
       [target.key]: Math.max(0, Math.round(value || 0))

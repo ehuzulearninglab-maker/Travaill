@@ -51,12 +51,12 @@ const initialInput: PlanInput = {
   effectifs: {
     maternelle: 0,
     ciCp: 0,
-    ce1Ce2: 120,
+    ce1Ce2: 0,
     cm1Cm2: 0,
     adulte: 0
   },
-  budgetTotal: 210000,
-  dureeJours: 5,
+  budgetTotal: 0,
+  dureeJours: 0,
   moisDisponibilite: monthOptions.map((month) => month.key)
 };
 
@@ -341,7 +341,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                   <input
                     className="champ"
                     max={30}
-                    min={1}
+                    min={0}
                     type="number"
                     value={input.dureeJours}
                     onChange={(event) => updateInput("dureeJours", Number(event.target.value))}
