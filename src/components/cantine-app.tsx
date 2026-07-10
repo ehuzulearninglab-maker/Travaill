@@ -245,7 +245,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
               optimiser les stocks et générer des rapports d'achats détaillés.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="no-print flex flex-wrap gap-2">
             <button type="button" onClick={downloadCsv} className="bouton-secondaire" title="Exporter le menu en CSV">
               <Download size={17} aria-hidden="true" />
               CSV
@@ -262,7 +262,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+      <section className="no-print rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Vues de l'application">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -422,7 +422,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
       ) : null}
 
       {activeTab === "menu" ? (
-        <section id="menu" className="space-y-5">
+        <section id="menu" className="menu-print-area space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-2xl font-black text-slate-950">Menu genere</h2>
@@ -432,18 +432,18 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="menu-day-grid grid gap-4 lg:grid-cols-2">
             {result.jours.map((day) => {
               const mealLines = day.lignes.filter((line) => line.service === "repas");
               const selectedTargetGroups = targetGroups.filter((target) => result.entree.effectifs[target.key] > 0);
 
               return (
-                <article key={day.jour} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <article key={day.jour} className="menu-day-card overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                   <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-black text-slate-500">{planningDayLabel(day.jour)}</p>
                       <h3 className="mt-1 text-xl font-black text-slate-950">{day.plat.nom}</h3>
-                      <label className="mt-4 block max-w-xl">
+                      <label className="menu-edit-control mt-4 block max-w-xl">
                         <span className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">
                           Changer le repas du jour
                         </span>
@@ -473,7 +473,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                     </div>
 
                     {result.goutersDisponibles.length > 0 ? (
-                      <label className="mt-3 block">
+                      <label className="menu-edit-control mt-3 block">
                         <span className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">
                           Changer le gouter
                         </span>
@@ -494,11 +494,6 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
 
                   <PortionDiagrams day={day} targets={selectedTargetGroups} />
 
-                  {day.alertes.length > 0 ? (
-                    <div className="border-t border-amber-100 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
-                      {day.alertes.join(" ")}
-                    </div>
-                  ) : null}
                 </article>
               );
             })}
@@ -772,9 +767,9 @@ function PortionDiagrams({ day, targets }: { day: DayMenu; targets: PortionDiagr
   return (
     <div className="border-t border-slate-100 bg-slate-50/70 p-4">
       <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Portions individuelles</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="menu-portions-grid mt-3 grid gap-3 sm:grid-cols-2">
         {diagrams.map(({ target, entries }) => (
-          <div key={target.key} className="rounded-lg border border-slate-200 bg-white p-3">
+          <div key={target.key} className="menu-portion-card rounded-lg border border-slate-200 bg-white p-3">
             <div className="flex items-center gap-3">
               <PortionDonut label={target.label} entries={entries} />
               <div className="min-w-0 flex-1 space-y-1.5">
@@ -803,7 +798,7 @@ function PortionDonut({ label, entries }: { label: string; entries: PortionDiagr
   let offset = 0;
 
   return (
-    <svg className="h-20 w-20 shrink-0" viewBox="0 0 80 80" role="img" aria-label={"Portions " + label}>
+    <svg className="menu-portion-donut h-20 w-20 shrink-0" viewBox="0 0 80 80" role="img" aria-label={"Portions " + label}>
       <circle cx="40" cy="40" r="28" fill="white" stroke="#e2e8f0" strokeWidth="12" />
       {entries.map((entry) => {
         const currentOffset = offset;

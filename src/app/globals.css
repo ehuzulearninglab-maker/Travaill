@@ -255,4 +255,50 @@ textarea {
     min-width: 0;
     padding: 0;
   }
+
+  .menu-day-grid {
+    display: block !important;
+  }
+
+  .menu-day-card {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    margin-bottom: 10mm;
+    overflow: visible !important;
+  }
+
+  .menu-day-card + .menu-day-card {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .menu-edit-control {
+    display: none !important;
+  }
+
+  .menu-day-card h3 {
+    font-size: 18px !important;
+    line-height: 1.2 !important;
+  }
+
+  .menu-day-card h4 {
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+  }
+
+  .menu-portions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .menu-portion-card {
+    padding: 8px !important;
+  }
+
+  .menu-portion-donut {
+    height: 56px !important;
+    width: 56px !important;
+  }
+
 }

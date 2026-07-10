@@ -747,6 +747,47 @@ function syntheticSnackFood(snack: ValidatedSnack): Food {
   };
 }
 
+function stableShuffleById<T>(items: T[], keyForItem: (item: T) => string, seed: number): T[] {
+  return items
+    .map((item, index) => ({ item, index, score: hashText(seed + ":" + keyForItem(item)) }))
+    .sort((a, b) => a.score - b.score || a.index - b.index)
+    .map(({ item }) => item);
+}
+
+function spreadByKey<T>(items: T[], keyForItem: (item: T) => string): T[] {
+  const remaining = [...items];
+  const arranged: T[] = [];
+  let previousKey = "";
+
+  while (remaining.length > 0) {
+    let nextIndex = remaining.findIndex((item) => keyForItem(item) !== previousKey);
+    if (nextIndex < 0) {
+      nextIndex = 0;
+    }
+    const [next] = remaining.splice(nextIndex, 1);
+    arranged.push(next);
+    previousKey = keyForItem(next);
+  }
+
+  return arranged;
+}
+
+function dishVarietyKey(dish: ValidatedDish): string {
+  return [dish.base, dish.proteineVisible, dish.sauce, dish.apportVegetal]
+    .map(normalizeText)
+    .filter(Boolean)
+    .join("|") || normalizeText(dish.nom);
+}
+
+function hashText(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 function pickDishForDay(
   allCandidates: Array<{ dish: ValidatedDish; lignes: Omit<MenuLine, "id" | "jour">[]; cout: number; alertes: string[] }>,
   completeCandidates: Array<{ dish: ValidatedDish; lignes: Omit<MenuLine, "id" | "jour">[]; cout: number; alertes: string[] }>,
@@ -762,12 +803,16 @@ function pickDishForDay(
   const budgetParRepas = entree.budgetTotal / Math.max(1, entree.dureeJours);
   const sourcePool = completeCandidates.length > 0 ? completeCandidates : allCandidates;
   const affordable = sourcePool.filter((candidate) => candidate.cout <= budgetParRepas);
-  const pool = affordable.length > 0 ? affordable : sourcePool;
-  if (pool.length === 0) {
+  const minimumVariety = Math.min(sourcePool.length, Math.max(1, Math.min(entree.dureeJours, 4)));
+  const budgetPool = affordable.length >= minimumVariety ? affordable : sourcePool;
+  if (budgetPool.length === 0) {
     return undefined;
   }
-  const offset = Math.abs(Math.round(entree.generationSeed || 0));
-  return pool[(jour - 1 + offset) % pool.length];
+
+  const seed = Math.abs(Math.round(entree.generationSeed || 0));
+  const shuffled = stableShuffleById(budgetPool, (candidate) => candidate.dish.id, seed);
+  const pool = spreadByKey(shuffled, (candidate) => dishVarietyKey(candidate.dish));
+  return pool[(jour - 1) % pool.length];
 }
 
 function buildMenuChoices(
@@ -824,12 +869,16 @@ function pickSnackForDay(
     return selected;
   }
   const usable = candidates.filter((candidate) => candidate.lignes.length > 0);
-  const pool = usable.length > 0 ? usable : candidates;
-  if (pool.length === 0) {
+  const sourcePool = usable.length > 0 ? usable : candidates;
+  if (sourcePool.length === 0) {
     return undefined;
   }
-  const offset = Math.abs(Math.round(entree.generationSeed || 0));
-  return pool[(jour - 1 + offset) % pool.length];
+  const seed = Math.abs(Math.round(entree.generationSeed || 0)) + 7919;
+  const pool = spreadByKey(
+    stableShuffleById(sourcePool, (candidate) => candidate.snack.id, seed),
+    (candidate) => normalizeText(candidate.snack.nom)
+  );
+  return pool[(jour - 1) % pool.length];
 }
 
 function portionForTarget(aliment: Food, target: TargetGroup): number {
