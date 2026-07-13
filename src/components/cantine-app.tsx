@@ -234,13 +234,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
       <section className="border-b border-slate-200 pb-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-              Planification alimentaire scolaire
-            </p>
-            <h1 className="mt-2 text-3xl font-black tracking-normal text-slate-950 sm:text-4xl">
-              Cantine Intelligente
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+            <p className="max-w-3xl text-sm leading-6 text-slate-600">
               Planifiez vos menus scolaires en quelques étapes simples : renseignez les effectifs, indiquez votre budget,
               choisissez la période disponible, puis générez automatiquement le menu, les achats et le rapport.
             </p>

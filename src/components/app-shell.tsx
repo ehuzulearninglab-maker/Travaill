@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
             <span>
               <span className="block text-lg font-black text-slate-950">Cantine Intelligente</span>
-              <span className="block text-sm font-semibold text-slate-500">Decision nutritionnelle et budgetaire</span>
+              <span className="block text-sm font-semibold text-slate-500">Planification alimentaire scolaire</span>
             </span>
           </Link>
         </div>
