@@ -241,8 +241,8 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
               Cantine Intelligente
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Cantine Intelligente vous aide à planifier des menus scolaires équilibrés, calculer les portions,
-              optimiser les stocks et générer des rapports d'achats détaillés.
+              Planifiez vos menus scolaires en quelques étapes simples : renseignez les effectifs, indiquez votre budget,
+              choisissez la période disponible, puis générez automatiquement le menu, les achats et le rapport.
             </p>
           </div>
           <div className="no-print flex flex-wrap gap-2">
