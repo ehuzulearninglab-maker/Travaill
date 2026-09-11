@@ -62,7 +62,7 @@ const initialInput: PlanInput = {
 
 const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: "planification", label: "Planification", icon: SlidersHorizontal },
-  { id: "menu", label: "Menu genere", icon: ChefHat },
+  { id: "menu", label: "Menu généré", icon: ChefHat },
   { id: "achats", label: "Achats", icon: PackageCheck },
   { id: "rapport", label: "Rapport", icon: ClipboardList }
 ];
@@ -83,10 +83,10 @@ const statusClasses: Record<Status, string> = {
 };
 
 const portionDiagramItems: { component: MenuLine["component"]; label: string; color: string }[] = [
-  { component: "base", label: "Feculent", color: "#fb923c" },
-  { component: "proteine", label: "Proteine", color: "#34d399" },
-  { component: "vegetal", label: "Legume", color: "#a3e635" },
-  { component: "gouter", label: "Gouter", color: "#f59e0b" }
+  { component: "base", label: "Féculent", color: "#fb923c" },
+  { component: "proteine", label: "Protéine", color: "#34d399" },
+  { component: "vegetal", label: "Légume", color: "#a3e635" },
+  { component: "gouter", label: "Goûter", color: "#f59e0b" }
 ];
 
 export function CantineApp({ initialReference }: { initialReference: CantineReference }) {
@@ -214,7 +214,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
     const rows = result.lignes.map((line) => [
       planningDayLabel(line.jour),
       result.jours.find((jour) => jour.jour === line.jour)?.plat.nom ?? "",
-      line.service === "gouter" ? "Gouter" : "Repas",
+      line.service === "gouter" ? "Goûter" : "Repas",
       componentLabels[line.component],
       line.aliment.nom,
       formatTargetPortions(line)
@@ -250,7 +250,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             </button>
             <button type="button" onClick={generateAndOpenMenu} className="bouton-primaire" title="Afficher le menu">
               <RefreshCw size={17} aria-hidden="true" />
-              Generer
+              Générer
             </button>
           </div>
         </div>
@@ -292,7 +292,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black text-slate-950">Contexte de planification</h2>
-                <p className="mt-1 text-sm text-slate-500">Effectifs, periode, budget et disponibilite du menu.</p>
+                <p className="mt-1 text-sm text-slate-500">Effectifs, période, budget et disponibilité du menu.</p>
               </div>
               <ChefHat className="text-[#1B6CA8]" size={24} aria-hidden="true" />
             </div>
@@ -331,7 +331,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                   />
                 </Field>
 
-                <Field label="Duree du menu">
+                <Field label="Durée du menu">
                   <input
                     className="champ"
                     max={30}
@@ -346,7 +346,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
               <fieldset>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="text-sm font-black uppercase tracking-[0.12em] text-slate-500">
-                    Disponibilite
+                    Disponibilité
                   </span>
                   <div className="flex gap-2">
                     <button
@@ -395,7 +395,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             <div className="mt-6 flex flex-wrap gap-3">
               <button type="submit" className="bouton-primaire">
                 <ChefHat size={17} aria-hidden="true" />
-                Generer le menu
+                Générer le menu
               </button>
               <button
                 type="button"
@@ -408,7 +408,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                 }}
               >
                 <RefreshCw size={17} aria-hidden="true" />
-                Reinitialiser
+                Réinitialiser
               </button>
             </div>
           </form>
@@ -419,13 +419,19 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
         <section id="menu" className="menu-print-area space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-black text-slate-950">Menu genere</h2>
+              <h2 className="text-2xl font-black text-slate-950">Menu généré</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Generation du {formatDateTime(result.genereLe)} depuis les plats valides du fichier.
+                Génération du {formatDateTime(result.genereLe)} depuis les plats validés du fichier.
               </p>
             </div>
           </div>
 
+          {result.jours.length === 0 ? (
+            <EmptyState
+              title="Aucun menu généré"
+              detail="Renseignez au moins un effectif et une durée supérieure à 0, puis cliquez sur Générer le menu."
+            />
+          ) : (
           <div className="menu-day-grid grid gap-4 lg:grid-cols-2">
             {result.jours.map((day) => {
               const mealLines = day.lignes.filter((line) => line.service === "repas");
@@ -461,15 +467,15 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                   <div className="border-t border-slate-100 bg-slate-50 p-4">
                     <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
                       <div>
-                        <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Gouter propose</p>
-                        <h4 className="mt-1 text-lg font-black text-slate-950">{day.gouter?.gouter.nom ?? "Aucun gouter disponible"}</h4>
+                        <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Goûter proposé</p>
+                        <h4 className="mt-1 text-lg font-black text-slate-950">{day.gouter?.gouter.nom ?? "Aucun goûter disponible"}</h4>
                       </div>
                     </div>
 
                     {result.goutersDisponibles.length > 0 ? (
                       <label className="menu-edit-control mt-3 block">
                         <span className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-                          Changer le gouter
+                          Changer le goûter
                         </span>
                         <select
                           className="champ"
@@ -492,6 +498,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
               );
             })}
           </div>
+          )}
         </section>
       ) : null}
 
@@ -501,7 +508,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             <div>
               <h2 className="text-2xl font-black text-slate-950">Liste des achats</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Quantites agregees apres arrondi selon l'unite d'achat du fichier.
+                Quantités agrégées après arrondi selon l'unité d'achat du fichier.
               </p>
             </div>
             <div className="text-left sm:text-right">
@@ -519,12 +526,19 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                   <th className="px-5 py-3">Besoin</th>
                   <th className="px-5 py-3">A acheter</th>
                   <th className="px-5 py-3">Surplus</th>
-                  <th className="px-5 py-3">Prix reference</th>
-                  <th className="px-5 py-3">Unite achat</th>
-                  <th className="px-5 py-3">Cout</th>
+                  <th className="px-5 py-3">Prix référence</th>
+                  <th className="px-5 py-3">Unité achat</th>
+                  <th className="px-5 py-3">Coût</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
+                {result.listeAchats.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-8 text-center font-semibold text-slate-500">
+                      Aucun achat à afficher pour le moment. Générez un menu avec une durée supérieure à 0.
+                    </td>
+                  </tr>
+                ) : null}
                 {result.listeAchats.map((item) => (
                   <tr key={item.aliment.id}>
                     <td className="px-5 py-3 font-bold text-slate-950">{item.aliment.nom}</td>
@@ -555,16 +569,16 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4" aria-label="Indicateurs principaux">
             <MetricCard
               icon={CheckCircle2}
-              label="Conformite"
+              label="Conformité"
               value={result.statut}
               detail={`${result.verifications.filter((check) => check.statut === "Conforme").length}/${
                 result.verifications.length
-              } controles OK`}
+              } contrôles OK`}
               tone={result.statut}
             />
             <MetricCard
               icon={WalletCards}
-              label="Budget utilise"
+              label="Budget utilisé"
               value={`${result.utilisationBudget}%`}
               detail={`${formatCurrency(result.coutTotal)} sur ${formatCurrency(result.entree.budgetTotal)}`}
               tone={result.ecartBudget >= 0 ? "Conforme" : "Non conforme"}
@@ -578,12 +592,12 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             />
             <MetricCard
               icon={BarChart3}
-              label="Cout par personne"
+              label="Coût par personne"
               value={formatCurrency(result.coutParPersonne)}
               detail={
                 result.ecartBudget >= 0
                   ? `Marge ${formatCurrency(result.ecartBudget)}`
-                  : `Depassement ${formatCurrency(Math.abs(result.ecartBudget))}`
+                  : `Dépassement ${formatCurrency(Math.abs(result.ecartBudget))}`
               }
               tone={result.ecartBudget >= 0 ? "Conforme" : "Attention"}
             />
@@ -608,7 +622,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                 </div>
                 <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
                   <div>
-                    <p className="font-bold text-slate-500">Cout total</p>
+                    <p className="font-bold text-slate-500">Coût total</p>
                     <p className="mt-1 text-lg font-black text-slate-950">{formatCurrency(result.coutTotal)}</p>
                   </div>
                   <div>
@@ -618,7 +632,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
                     </p>
                   </div>
                   <div>
-                    <p className="font-bold text-slate-500">Disponibilite</p>
+                    <p className="font-bold text-slate-500">Disponibilité</p>
                     <p className="mt-1 text-lg font-black text-slate-950">
                       {result.entree.moisDisponibilite.length === monthOptions.length
                         ? "12 mois"
@@ -633,13 +647,13 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
               <div className="flex items-start gap-3">
                 <FileSpreadsheet className="mt-1 text-[#1B6CA8]" size={22} aria-hidden="true" />
                 <div>
-                  <h3 className="text-lg font-black text-slate-950">Base de reference</h3>
+                  <h3 className="text-lg font-black text-slate-950">Base de référence</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-600">
                     {result.reference.sourceName} - {result.reference.platsValides} plats valides,{" "}
-                    {result.reference.goutersValides} gouters, {result.reference.alimentsActifs} aliments actifs.
+                    {result.reference.goutersValides} goûters, {result.reference.alimentsActifs} aliments actifs.
                   </p>
                   <p className="mt-2 text-xs font-semibold text-slate-500">
-                    Derniere base: {formatDateTime(result.reference.importedAt)}
+                    Dernière base: {formatDateTime(result.reference.importedAt)}
                   </p>
                 </div>
               </div>
@@ -649,8 +663,8 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 p-5">
-              <h2 className="text-2xl font-black text-slate-950">Rapport de verification</h2>
-              <p className="mt-1 text-sm text-slate-500">Regles metier appliquees au menu courant.</p>
+              <h2 className="text-2xl font-black text-slate-950">Rapport de vérification</h2>
+              <p className="mt-1 text-sm text-slate-500">Règles métier appliquées au menu courant.</p>
             </div>
             <div className="divide-y divide-slate-100">
               {result.verifications.map((check) => (
@@ -685,7 +699,7 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-black text-slate-950">Explicabilite</h3>
+              <h3 className="text-lg font-black text-slate-950">Explicabilité</h3>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
                 {result.explications.map((explanation) => (
                   <li key={explanation} className="flex gap-2">
@@ -699,6 +713,15 @@ export function CantineApp({ initialReference }: { initialReference: CantineRefe
           </div>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+function EmptyState({ title, detail }: { title: string; detail: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+      <p className="text-lg font-black text-slate-950">{title}</p>
+      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">{detail}</p>
     </div>
   );
 }
@@ -824,25 +847,29 @@ function PortionDonut({ label, entries }: { label: string; entries: PortionDiagr
 function portionEntriesForTarget(day: DayMenu, target: PortionDiagramTarget): PortionDiagramEntry[] {
   return portionDiagramItems
     .map((item) => {
-      const line = day.lignes.find((candidate) =>
+      const lines = day.lignes.filter((candidate) =>
         item.component === "gouter"
           ? candidate.service === "gouter"
           : candidate.service === "repas" && candidate.component === item.component
       );
-      if (!line) {
+      if (lines.length === 0) {
         return undefined;
       }
 
-      const value = line.portionAffichee?.quantitesParCible[target.key] ?? line.quantitesParCible[target.key] ?? 0;
+      const displayLine = lines.find((line) => (line.portionAffichee?.quantitesParCible[target.key] ?? 0) > 0);
+      const value = displayLine
+        ? displayLine.portionAffichee?.quantitesParCible[target.key] ?? 0
+        : lines.reduce((total, line) => total + (line.quantitesParCible[target.key] ?? 0), 0);
       if (value <= 0) {
         return undefined;
       }
 
+      const lineForUnit = displayLine ?? lines[0];
       return {
         label: item.label,
         color: item.color,
         value,
-        unit: line.portionAffichee?.uniteLabel || line.aliment.unitePortionLabel || line.aliment.unitePortion
+        unit: lineForUnit.portionAffichee?.uniteLabel || lineForUnit.aliment.unitePortionLabel || lineForUnit.aliment.unitePortion
       };
     })
     .filter((entry): entry is PortionDiagramEntry => Boolean(entry));
@@ -859,11 +886,11 @@ function trimDiagramNumber(value: number): string {
 }
 
 function foodRoleClass(food: MenuLine["aliment"]): string {
-  return food.groupeAlimentaire === "Gouter" ? snackClass : roleClasses[food.role];
+  return food.groupeAlimentaire === "Goûter" ? snackClass : roleClasses[food.role];
 }
 
 function foodRoleLabel(food: MenuLine["aliment"]): string {
-  return food.groupeAlimentaire === "Gouter" ? "Gouter" : roleLabels[food.role];
+  return food.groupeAlimentaire === "Goûter" ? "Goûter" : roleLabels[food.role];
 }
 
 function MetricCard({
@@ -899,11 +926,19 @@ function formatTargetPortions(line: MenuLine): string {
   const parts = targetGroups
     .filter((target) => line.quantitesParCible[target.key] > 0)
     .map((target) => `${target.label}: ${formatPortion(line.aliment, line.quantitesParCible[target.key])}`);
-  return parts.length > 0 ? parts.join(" | ") : "Portion par cible non renseignee";
+  return parts.length > 0 ? parts.join(" | ") : "Portion par cible non renseignée";
 }
 
 function coverageDays(days: DayMenu[], role: FoodRole): number {
-  return days.filter((day) => day.lignes.some((line) => line.service === "repas" && line.role === role)).length;
+  return days.filter((day) =>
+    day.lignes.some((line) =>
+      line.service === "repas" &&
+      (line.role === role ||
+        (role === "energetique" && line.component === "base") ||
+        (role === "proteine" && line.component === "proteine") ||
+        (role === "vegetal" && line.component === "vegetal"))
+    )
+  ).length;
 }
 
 function StatusBadge({ status, compact = false }: { status: Status; compact?: boolean }) {
