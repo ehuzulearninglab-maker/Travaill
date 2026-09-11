@@ -190,7 +190,7 @@ export function CantineAdminClient({
 
     setReference(data.reference);
     setStatus(data.status);
-    setMessage(data.message || "Base de reference mise a jour.");
+    setMessage(data.message || "Base de référence mise à jour.");
     router.refresh();
   }
 
@@ -202,7 +202,7 @@ export function CantineAdminClient({
             <ShieldCheck size={22} aria-hidden="true" />
           </span>
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">Acces protege</p>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">Accès protégé</p>
             <h1 className="mt-1 text-2xl font-black text-slate-950">Administration Cantine</h1>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Cet espace sert uniquement a mettre a jour le fichier de reference utilise par tous les utilisateurs.
@@ -254,9 +254,9 @@ export function CantineAdminClient({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Administration</p>
-            <h1 className="mt-2 text-3xl font-black text-slate-950">Reference alimentaire</h1>
+            <h1 className="mt-2 text-3xl font-black text-slate-950">Référence alimentaire</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Une seule base active alimente la planification, la generation de menus et la liste des achats.
+              Une seule base active alimente la planification, la génération de menus et la liste des achats.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -282,9 +282,9 @@ export function CantineAdminClient({
         />
         <AdminMetric
           icon={ChefHat}
-          label="Gouters"
+          label="Goûters"
           value={String(reference.snacks.filter((snack) => isValidatedStatus(snack.statut)).length)}
-          detail="Feuille Gouters"
+          detail="Feuille Goûters"
         />
         <AdminMetric
           icon={Database}
@@ -294,8 +294,8 @@ export function CantineAdminClient({
         />
         <AdminMetric
           icon={ShieldCheck}
-          label="Acces"
-          value="Admin protege"
+          label="Accès"
+          value="Admin protégé"
           detail="Lien separe de l'espace utilisateur"
         />
       </section>
@@ -315,14 +315,14 @@ export function CantineAdminClient({
       <section className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
         <div className="space-y-5">
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-xl font-black text-slate-950">Mettre a jour le fichier</h2>
+          <h2 className="text-xl font-black text-slate-950">Mettre à jour le fichier</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            Le fichier doit contenir `Base_Aliments` et `Plats_Validés`. La feuille `Gouters` est lue si elle existe.
+            Le fichier doit contenir `Base_Aliments` et `Plats_Validés`. La feuille `Goûters` est lue si elle existe.
           </p>
 
           {!status.writable ? (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-800">
-              Import bloque en production tant que `DATABASE_URL` n'est pas configure. Cela evite les imports
+              Import bloqué en production tant qu'aucun stockage persistant PostgreSQL valide n'est configuré. Cela évite les imports
               temporaires qui disparaissent au rechargement.
             </div>
           ) : null}
@@ -330,7 +330,7 @@ export function CantineAdminClient({
           <label className="mt-5 flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-sm font-bold text-slate-600 transition hover:border-[#1B6CA8] hover:bg-blue-50">
             <Upload size={24} aria-hidden="true" />
             <span className="mt-2">
-              {busy ? "Import en cours..." : status.writable ? "Selectionner un fichier Excel" : "Stockage persistant requis"}
+              {busy ? "Import en cours..." : status.writable ? "Sélectionner un fichier Excel" : "Stockage persistant requis"}
             </span>
             <input
               className="sr-only"
@@ -354,7 +354,7 @@ export function CantineAdminClient({
               {reference.dishes.filter((dish) => isValidatedStatus(dish.statut)).length}
             </p>
             <p>
-              <span className="font-bold text-slate-800">Gouters valides :</span>{" "}
+              <span className="font-bold text-slate-800">Goûters valides :</span>{" "}
               {reference.snacks.filter((snack) => isValidatedStatus(snack.statut)).length}
             </p>
             <p>
@@ -366,7 +366,7 @@ export function CantineAdminClient({
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-xl font-black text-slate-950">Cle API IA</h2>
+              <h2 className="text-xl font-black text-slate-950">Clé API IA</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 Optionnel. Les calculs principaux restent controles par le fichier Excel et les regles metier.
               </p>
@@ -382,7 +382,7 @@ export function CantineAdminClient({
 
           <div className="mt-4 space-y-3">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-bold text-slate-700">Nouvelle cle API</span>
+              <span className="mb-1.5 block text-sm font-bold text-slate-700">Nouvelle clé API</span>
               <input
                 className="champ"
                 type="password"
@@ -410,7 +410,7 @@ export function CantineAdminClient({
           <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">
             <p>
               <span className="font-bold text-slate-800">Statut :</span>{" "}
-              {aiStatus?.actif ? "cle active" : "aucune cle active"}
+              {aiStatus?.actif ? "clé active" : "aucune clé active"}
             </p>
             <p>
               <span className="font-bold text-slate-800">Source :</span> {aiStatus?.source || "absent"}
@@ -441,10 +441,10 @@ export function CantineAdminClient({
             </label>
             <select className="champ" value={role} onChange={(event) => setRole(event.target.value as FoodRole | "Tous")}>
               <option>Tous</option>
-              <option value="energetique">Energie</option>
-              <option value="proteine">Proteine</option>
+              <option value="energetique">Énergie</option>
+              <option value="proteine">Protéine</option>
               <option value="fruit">Fruit</option>
-              <option value="vegetal">Vegetal</option>
+              <option value="vegetal">Végétal</option>
               <option value="autre">Autre</option>
             </select>
           </div>
@@ -456,9 +456,9 @@ export function CantineAdminClient({
                   <th className="px-4 py-3">Aliment</th>
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Saison</th>
-                  <th className="px-4 py-3">Prix reference</th>
+                  <th className="px-4 py-3">Prix référence</th>
                   <th className="px-4 py-3">Portion enfant</th>
-                  <th className="px-4 py-3">Unite achat</th>
+                  <th className="px-4 py-3">Unité achat</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
