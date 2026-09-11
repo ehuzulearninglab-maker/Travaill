@@ -33,31 +33,36 @@ const globalForCantine = globalThis as typeof globalThis & {
   cantinePostgresReady?: boolean;
   cantinePostgresDisabled?: boolean;
   cantinePostgresError?: string;
+  cantinePostgresSource?: string;
   cantineMemoryReference?: RawCantineReference;
 };
 
-function databaseConnectionString(): string | undefined {
-  const candidate =
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_PRISMA_URL ||
-    process.env.POSTGRES_URL_NON_POOLING ||
-    process.env.SUPABASE_DB_URL ||
-    process.env.SUPABASE_POSTGRES_URL;
+const POSTGRES_ENV_KEYS = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "POSTGRES_PRISMA_URL",
+  "POSTGRES_URL_NON_POOLING",
+  "SUPABASE_DB_URL",
+  "SUPABASE_POSTGRES_URL"
+] as const;
 
-  const value = candidate?.trim();
-  if (!value || !/^postgres(ql)?:\/\//i.test(value)) {
-    return undefined;
-  }
-  return value;
+function databaseConnectionCandidates(): { key: string; value: string }[] {
+  const seen = new Set<string>();
+  return POSTGRES_ENV_KEYS.flatMap((key) => {
+    const value = process.env[key]?.trim();
+    if (!value || !/^postgres(ql)?:\/\//i.test(value) || seen.has(value)) {
+      return [];
+    }
+    seen.add(value);
+    return [{ key, value }];
+  });
 }
 
 function usePostgres(): boolean {
-  return Boolean(databaseConnectionString()) && !globalForCantine.cantinePostgresDisabled;
+  return databaseConnectionCandidates().length > 0 && !globalForCantine.cantinePostgresDisabled;
 }
 
-function postgresConnectionStringForPool(): string | undefined {
-  const connectionString = databaseConnectionString();
+function postgresConnectionStringForPool(connectionString: string): string {
   if (!connectionString || process.env.PGSSLMODE === "disable") {
     return connectionString;
   }
@@ -80,15 +85,23 @@ export function getCantineReferenceWriteBlocker(): string | undefined {
     return undefined;
   }
 
-  if (!databaseConnectionString()) {
-    return "Stockage persistant requis: ajoutez DATABASE_URL dans Vercel avant d'importer un nouveau fichier Excel. Sans base PostgreSQL, Vercel ne peut pas conserver un fichier importe.";
+  if (databaseConnectionCandidates().length === 0) {
+    return "Stockage persistant requis : ajoutez DATABASE_URL ou POSTGRES_URL dans Vercel avant d'importer un nouveau fichier Excel. Sans base PostgreSQL, Vercel ne peut pas conserver le fichier après rechargement.";
   }
 
   if (globalForCantine.cantinePostgresDisabled) {
-    return `Stockage PostgreSQL indisponible: ${globalForCantine.cantinePostgresError || "connexion impossible"}. Corrigez DATABASE_URL puis redeployez.`;
+    return `Stockage PostgreSQL indisponible : ${globalForCantine.cantinePostgresError || "connexion impossible"}. Corrigez la variable PostgreSQL dans Vercel puis redéployez.`;
   }
 
   return undefined;
+}
+
+async function createPool(connectionString: string): Promise<PgPool> {
+  const { Pool } = await import("pg");
+  return new Pool({
+    connectionString: postgresConnectionStringForPool(connectionString),
+    ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
+  });
 }
 
 async function getPool(): Promise<PgPool> {
@@ -96,11 +109,13 @@ async function getPool(): Promise<PgPool> {
     return globalForCantine.cantinePool;
   }
 
-  const { Pool } = await import("pg");
-  globalForCantine.cantinePool = new Pool({
-    connectionString: postgresConnectionStringForPool(),
-    ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
-  });
+  const candidate = databaseConnectionCandidates()[0];
+  if (!candidate) {
+    throw new Error("Aucune variable PostgreSQL valide n'est configurée.");
+  }
+
+  globalForCantine.cantinePool = await createPool(candidate.value);
+  globalForCantine.cantinePostgresSource = candidate.key;
   return globalForCantine.cantinePool;
 }
 
@@ -112,23 +127,30 @@ async function ensurePostgresTable(): Promise<boolean> {
     return true;
   }
 
-  try {
-    const pool = await getPool();
-    await pool.query(`
-      create table if not exists cantine_references (
-        id text primary key,
-        source_name text not null,
-        imported_at timestamptz not null default now(),
-        data jsonb not null
-      )
-    `);
-    globalForCantine.cantinePostgresReady = true;
-    return true;
-  } catch (error) {
-    globalForCantine.cantinePostgresDisabled = true;
-    globalForCantine.cantinePostgresError = error instanceof Error ? error.message : String(error);
-    return false;
+  const errors: string[] = [];
+  for (const candidate of databaseConnectionCandidates()) {
+    let pool: PgPool | undefined;
+    try {
+      pool = await createPool(candidate.value);
+      await pool.query(
+        "create table if not exists cantine_references (id text primary key, source_name text not null, imported_at timestamptz not null default now(), data jsonb not null)"
+      );
+      globalForCantine.cantinePool = pool;
+      globalForCantine.cantinePostgresReady = true;
+      globalForCantine.cantinePostgresDisabled = false;
+      globalForCantine.cantinePostgresError = undefined;
+      globalForCantine.cantinePostgresSource = candidate.key;
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push(`${candidate.key}: ${message}`);
+      await pool?.end().catch(() => undefined);
+    }
   }
+
+  globalForCantine.cantinePostgresDisabled = true;
+  globalForCantine.cantinePostgresError = errors.join(" | ");
+  return false;
 }
 
 function asIso(value: unknown): string {
@@ -153,7 +175,9 @@ function postgresStatus(): CantineStorageStatus {
     mode: "postgres",
     persistent: true,
     writable: true,
-    label: "PostgreSQL"
+    label: globalForCantine.cantinePostgresSource
+      ? `PostgreSQL (${globalForCantine.cantinePostgresSource})`
+      : "PostgreSQL"
   };
 }
 
@@ -175,8 +199,8 @@ function memoryStatus(): CantineStorageStatus {
     mode: "memory",
     persistent: false,
     writable: false,
-    label: "Memoire serveur temporaire",
-    warning: getCantineReferenceWriteBlocker() || "Configurez DATABASE_URL pour conserver les futurs imports en production."
+    label: "Mémoire serveur temporaire",
+    warning: getCantineReferenceWriteBlocker() || "Configurez DATABASE_URL ou POSTGRES_URL pour conserver les futurs imports en production."
   };
 }
 
@@ -186,7 +210,7 @@ function staticStatus(): CantineStorageStatus {
     mode: "static",
     persistent: true,
     writable: !writeBlocker,
-    label: "Reference incluse dans l'application",
+    label: "Référence incluse dans l'application",
     warning: writeBlocker
   };
 }
