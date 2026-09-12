@@ -578,7 +578,7 @@ function dishComponentPortions(row: RawRow): ValidatedDish["componentPortions"] 
   return {
     base: dishPortionProfile(row, ""),
     proteine: dishPortionProfile(row, " 3"),
-    vegetal: dishPortionProfile(row, " 2")
+    vegetal: vegetablePortionProfile(row)
   };
 }
 
@@ -593,6 +593,34 @@ function dishPortionProfile(row: RawRow, suffix: "" | " 2" | " 3"): PortionDispl
     quantitesParCible,
     uniteLabel
   };
+}
+
+function vegetablePortionProfile(row: RawRow): PortionDisplay {
+  const profile = dishPortionProfile(row, " 2");
+
+  if (!isLiquidPortionUnit(profile.uniteLabel)) {
+    return profile;
+  }
+
+  return {
+    quantitesParCible: emptyTargetPortions(),
+    uniteLabel: ""
+  };
+}
+
+function emptyTargetPortions(): Record<TargetGroup, number> {
+  return targetGroups.reduce(
+    (values, target) => ({
+      ...values,
+      [target.key]: 0
+    }),
+    {} as Record<TargetGroup, number>
+  );
+}
+
+function isLiquidPortionUnit(unit: string): boolean {
+  const normalized = normalizeText(unit);
+  return /\b(ml|cl|dl|l|litre|litres)\b/.test(normalized);
 }
 
 function dishPortionLabels(target: TargetGroup, suffix: "" | " 2" | " 3"): string[] {
