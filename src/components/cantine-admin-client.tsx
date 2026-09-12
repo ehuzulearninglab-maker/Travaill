@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ChefHat,
   Database,
+  Download,
   FileSpreadsheet,
   Home,
   KeyRound,
@@ -194,6 +195,30 @@ export function CantineAdminClient({
     router.refresh();
   }
 
+  async function downloadReferenceFile() {
+    setBusy(true);
+    setMessage(undefined);
+
+    const response = await fetch("/api/cantine/reference/file", { cache: "no-store" });
+    if (!response.ok) {
+      const data = (await response.json().catch(() => ({}))) as { message?: string };
+      setBusy(false);
+      setMessage(data.message || "Fichier source introuvable.");
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = reference.sourceName || "reference-cantine.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setBusy(false);
+  }
+
   if (!isAuthenticated) {
     return (
       <section className="mx-auto max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -343,6 +368,16 @@ export function CantineAdminClient({
               }}
             />
           </label>
+
+          <button
+            type="button"
+            className="bouton-secondaire mt-3 w-full justify-center"
+            disabled={busy}
+            onClick={downloadReferenceFile}
+          >
+            <Download size={16} aria-hidden="true" />
+            Télécharger le fichier actif
+          </button>
 
           <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm leading-6 text-slate-600">
             <p>

@@ -72,5 +72,7 @@ create table if not exists cantine_references (
   id text primary key,
   source_name text not null,
   imported_at timestamptz not null default now(),
-  data jsonb not null
+  data jsonb not null,
+  source_file bytea,
+  source_mime text
 );

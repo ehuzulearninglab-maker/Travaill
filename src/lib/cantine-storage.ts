@@ -25,6 +25,13 @@ export type CantineReferenceBundle = {
   status: CantineStorageStatus;
 };
 
+export type CantineSourceFile = {
+  fileName: string;
+  mimeType: string;
+  data: Buffer;
+  importedAt: string;
+};
+
 const ACTIVE_REFERENCE_ID = "active";
 const DATA_FILE = path.join(process.cwd(), "data", "cantine-reference-active.json");
 
@@ -135,6 +142,8 @@ async function ensurePostgresTable(): Promise<boolean> {
       await pool.query(
         "create table if not exists cantine_references (id text primary key, source_name text not null, imported_at timestamptz not null default now(), data jsonb not null)"
       );
+      await pool.query("alter table cantine_references add column if not exists source_file bytea");
+      await pool.query("alter table cantine_references add column if not exists source_mime text");
       globalForCantine.cantinePool = pool;
       globalForCantine.cantinePostgresReady = true;
       globalForCantine.cantinePostgresDisabled = false;
@@ -278,9 +287,45 @@ export async function getCantineStorageStatus(): Promise<CantineStorageStatus> {
   return (await getCantineReferenceBundle()).status;
 }
 
+function asBuffer(value: unknown): Buffer | undefined {
+  if (Buffer.isBuffer(value)) {
+    return value;
+  }
+  if (value instanceof Uint8Array) {
+    return Buffer.from(value);
+  }
+  return undefined;
+}
+
+export async function getActiveCantineSourceFile(): Promise<CantineSourceFile | undefined> {
+  if (!(usePostgres() && (await ensurePostgresTable()))) {
+    return undefined;
+  }
+
+  const pool = await getPool();
+  const result = await pool.query(
+    "select source_name, source_mime, source_file, imported_at from cantine_references where id = $1 limit 1",
+    [ACTIVE_REFERENCE_ID]
+  );
+  const row = result.rows[0] as PgRow | undefined;
+  const data = asBuffer(row?.source_file);
+
+  if (!row || !data || data.byteLength === 0) {
+    return undefined;
+  }
+
+  return {
+    fileName: String(row.source_name || "reference-cantine.xlsx"),
+    mimeType: String(row.source_mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    data,
+    importedAt: asIso(row.imported_at)
+  };
+}
+
 export async function saveActiveCantineReference(
   raw: RawCantineReference,
-  sourceName: string
+  sourceName: string,
+  sourceFile?: { data: Buffer; mimeType: string }
 ): Promise<CantineReferenceBundle> {
   const writeBlocker = getCantineReferenceWriteBlocker();
   if (writeBlocker) {
@@ -296,13 +341,22 @@ export async function saveActiveCantineReference(
   if (usePostgres() && (await ensurePostgresTable())) {
     const pool = await getPool();
     await pool.query(
-      `insert into cantine_references (id, source_name, imported_at, data)
-       values ($1, $2, $3, $4::jsonb)
+      `insert into cantine_references (id, source_name, imported_at, data, source_file, source_mime)
+       values ($1, $2, $3, $4::jsonb, $5, $6)
        on conflict (id) do update
        set source_name = excluded.source_name,
            imported_at = excluded.imported_at,
-           data = excluded.data`,
-      [ACTIVE_REFERENCE_ID, stored.sourceName, stored.importedAt, JSON.stringify(stored)]
+           data = excluded.data,
+           source_file = excluded.source_file,
+           source_mime = excluded.source_mime`,
+      [
+        ACTIVE_REFERENCE_ID,
+        stored.sourceName,
+        stored.importedAt,
+        JSON.stringify(stored),
+        sourceFile?.data || null,
+        sourceFile?.mimeType || null
+      ]
     );
     return {
       reference: normalizeCantineReference(stored),

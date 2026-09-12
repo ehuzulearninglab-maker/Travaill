@@ -39,7 +39,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const raw = await parseCantineWorkbook(await file.arrayBuffer(), fileName);
+    const arrayBuffer = await file.arrayBuffer();
+    const fileBuffer = Buffer.from(arrayBuffer);
+    const raw = await parseCantineWorkbook(arrayBuffer, fileName);
     const normalized = normalizeCantineReference(raw);
     const alimentsActifs = normalized.foods.filter((food) => food.actif).length;
     const platsValides = normalized.dishes.filter((dish) => {
@@ -57,7 +59,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Aucun plat valide trouve dans Plats_Validés." }, { status: 400 });
     }
 
-    const bundle = await saveActiveCantineReference(raw, fileName);
+    const bundle = await saveActiveCantineReference(raw, fileName, {
+      data: fileBuffer,
+      mimeType: "type" in file && typeof file.type === "string" && file.type
+        ? file.type
+        : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
     return NextResponse.json({
       succes: true,
       ...bundle,
